@@ -1,0 +1,8 @@
+[submodule "ML_for_Battery_Design/external/BayesFlow"]
+	path = ML_for_Battery_Design/external/BayesFlow
+	url = git@github.com:stefanradev93/BayesFlow.git
+	branch = Future
+[submodule "ML_for_Battery_Design/external/exchange_HSU_UniHD"]
+	path = ML_for_Battery_Design/external/exchange_HSU_UniHD
+	url = git@github.com:carrarot/exchange_HSU_UniHD.git
+	branch = master

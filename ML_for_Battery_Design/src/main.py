@@ -33,5 +33,9 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     return args
 
 
+def test():
+    return True
+
+
 if __name__ == "__main__":
     main()

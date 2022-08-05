@@ -37,11 +37,20 @@ repos:
         language: system
         entry: pipenv run pytest
         types: [python]
+        pass_filenames: false
 
-      - id: pytest-cov
+      - id: pytest-cov-info
+        name: pytest
+        stages: [commit]
+        language: system
+        entry: pipenv run pytest --cov=ML_for_Battery_Design/src
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest-cov-html-report
         name: pytest
         stages: [push]
         language: system
-        entry: pipenv run pytest --cov=ML_for_Battery_Design/src
+        entry: pipenv run pytest --cov=ML_for_Battery_Design/src --cov-report=html --cov-fail-under=100
         types: [python]
         pass_filenames: false

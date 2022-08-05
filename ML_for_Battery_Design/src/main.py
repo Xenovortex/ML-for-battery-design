@@ -27,15 +27,9 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
         pass
     elif bool(args["evaluate"]):
         pass
-    else:
-        raise ValueError("main.py: Invalid user input!")
 
     return args
 
 
-def test():
-    return True
-
-
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover

@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+docopt = "*"
 
 [dev-packages]
 black = "*"
@@ -17,6 +18,9 @@ mkdocs = "*"
 mkdocstrings = {extras = ["python"], version = "*"}
 mkdocs-material = "*"
 mkgendocs = "*"
+
+[scripts]
+main = "python ./ML_for_Battery_Design/src/main.py"
 
 [requires]
 python_version = "3.9"

@@ -1,4 +1,3 @@
 [run]
 source = ML_for_Battery_Design/src
-omit = ML_for_Battery_Design/src/main.py
 

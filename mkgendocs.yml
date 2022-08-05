@@ -1,0 +1,9 @@
+sources_dir: docs/src
+templates_dir: docs/templates
+repo: https://github.com/Xenovortex/ML-for-battery-design.git
+version: maseter
+
+
+pages:
+  - page: "main.md"
+    source: "ML_for_Battery_Design/src/main.py"

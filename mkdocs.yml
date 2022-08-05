@@ -1,0 +1,13 @@
+# mkdocs.yml
+site_name: Machine Learning for Battery Design Documentation
+
+theme:
+  name: "material"
+
+plugins:
+  - mkdocstrings
+
+nav:
+  - index.md
+  - 'Reference':
+    - src/main.md

@@ -29,4 +29,4 @@ def test_main_mode_invalid(invalid_mode_input):
 
 def test_main_mode_multiple_inputs():
     with pytest.raises(DocoptExit):
-        main.main([random.choices(valid_modes, k=random.randint(2, len(valid_modes)))])
+        main.main(random.choices(valid_modes, k=random.randint(2, len(valid_modes))))

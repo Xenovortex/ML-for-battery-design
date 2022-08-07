@@ -39,14 +39,6 @@ repos:
         types: [python]
         pass_filenames: false
 
-      - id: pytest-cov-info
-        name: pytest
-        stages: [commit]
-        language: system
-        entry: pipenv run pytest --cov=ML_for_Battery_Design/src
-        types: [python]
-        pass_filenames: false
-
       - id: pytest-cov-html-report
         name: pytest
         stages: [push]

@@ -6,7 +6,7 @@ from docopt import DocoptExit
 
 import ML_for_Battery_Design.src.main as main
 
-test_valid_modes = ["train", "generate_data", "plot", "evaluate"]
+valid_modes = ["train", "generate_data", "plot", "evaluate"]
 
 invalid_input = [
     "",
@@ -14,7 +14,7 @@ invalid_input = [
 ]
 
 
-@pytest.mark.parametrize("valid_mode_input", test_valid_modes)
+@pytest.mark.parametrize("valid_mode_input", valid_modes)
 def test_main_mode_valid(valid_mode_input):
     args = main.main(valid_mode_input)
     assert sum(args.values()) == 1  # only one mode True, all other mode False
@@ -25,3 +25,8 @@ def test_main_mode_valid(valid_mode_input):
 def test_main_mode_invalid(invalid_mode_input):
     with pytest.raises(DocoptExit):
         main.main(invalid_mode_input)
+
+
+def test_main_mode_multiple_inputs():
+    with pytest.raises(DocoptExit):
+        main.main([random.choices(valid_modes, k=random.randint(2, len(valid_modes)))])

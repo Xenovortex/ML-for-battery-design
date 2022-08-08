@@ -6,3 +6,4 @@
 htmlcov
 tests/__pycache__
 ML_for_Battery_Design/__pycache__
+ML_for_Battery_Design/src/simulation/__pycache__

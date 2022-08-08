@@ -30,3 +30,12 @@ class SimulationModel(ABC):
         self.simulation_settings = simulation_settings
         self.sample_boundaries = sample_boundaries
         self.default_param_values = default_param_values
+
+        # unpach simulation parameters
+        self.dt0 = self.simulation_settings["dt0"]
+        self.max_time_iter = self.simulation_settings["max_time_iter"]
+        if "nr" in simulation_settings:
+            self.nr = self.simulation_settings["nr"]
+            self.is_pde = True
+        else:
+            self.is_pde = False

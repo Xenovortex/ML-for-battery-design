@@ -15,6 +15,14 @@ from docopt import docopt
 
 
 def main(argv: Optional[Sequence[str]] = None) -> dict:
+    """Main function for running the command line interface
+
+    Args:
+        argv (Optional[Sequence[str]], optional): argument vector/list input passed by command line. Defaults to None.
+
+    Returns:
+        args (dict): user input given through command line
+    """
     args = docopt(__doc__, argv)
 
     print("User input:", args)

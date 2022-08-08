@@ -1,0 +1,8 @@
+# folders and files not to track
+.coverage
+.vscode
+.mypy_cache
+.pytest_cache
+htmlcov
+tests/__pycache__
+ML_for_Battery_Design/__pycache__

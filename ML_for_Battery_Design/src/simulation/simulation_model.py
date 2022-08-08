@@ -1,4 +1,4 @@
-from abc import ABC  # , abstractmethod
+from abc import ABC, abstractmethod
 
 
 class SimulationModel(ABC):
@@ -9,6 +9,7 @@ class SimulationModel(ABC):
         simulation_settings (dict): settings for generating simulation data
         sample_boundaries (dict): sampling boundaries for each hidden parameter
         default_param_values (dict): default values of hidden parameters, if not sampled
+        dt0 (float):
     """
 
     def __init__(
@@ -39,3 +40,15 @@ class SimulationModel(ABC):
             self.is_pde = True
         else:
             self.is_pde = False
+
+    @abstractmethod
+    def get_sim_data_dim(self):
+        raise NotImplementedError("get_sim_data_dim method is not implement")
+
+    @abstractmethod
+    def simulator(self):
+        raise NotImplementedError("simulator method is not implement")
+
+    @abstractmethod
+    def plot_sim_data(self):
+        raise NotImplementedError("plot_sim_data is not implement")

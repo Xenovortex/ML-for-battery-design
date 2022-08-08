@@ -36,12 +36,21 @@ for name in dummy_param_names:
     dummy_default_values[name] = random.uniform(-1000, 1000)
 
 
+def get_concrete_class(AbstractClass, *args):
+    class ConcreteClass(AbstractClass):
+        def __init__(self, *args) -> None:
+            super().__init__(*args)
+
+    ConcreteClass.__abstractmethods__ = frozenset()
+    return type("DummyConcreteClassOf" + AbstractClass.__name__, (ConcreteClass,), {})
+
+
 @pytest.mark.parametrize(
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
 def test_simulation_model_init_random_input(simulation_settings):
-    test_object = SimulationModel(
+    test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,
         dummy_sample_boundaries,
@@ -54,7 +63,7 @@ def test_simulation_model_init_random_input(simulation_settings):
 
 
 def test_simulation_model_init_ode():
-    test_object = SimulationModel(
+    test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,
         dummy_sample_boundaries,
@@ -66,7 +75,7 @@ def test_simulation_model_init_ode():
 
 
 def test_simulation_model_init_pde():
-    test_object = SimulationModel(
+    test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_pde_simulation_settings,
         dummy_sample_boundaries,
@@ -76,3 +85,22 @@ def test_simulation_model_init_pde():
     assert test_object.max_time_iter == dummy_pde_simulation_settings["max_time_iter"]
     assert test_object.nr == dummy_pde_simulation_settings["nr"]
     assert test_object.is_pde
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_abstract_methods(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    with pytest.raises(NotImplementedError):
+        test_object.get_sim_data_dim()
+    with pytest.raises(NotImplementedError):
+        test_object.simulator()
+    with pytest.raises(NotImplementedError):
+        test_object.plot_sim_data()

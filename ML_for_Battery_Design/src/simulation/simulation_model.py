@@ -1,4 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
 
 
 class SimulationModel(ABC):
@@ -32,6 +36,24 @@ class SimulationModel(ABC):
         self.sample_boundaries = sample_boundaries
         self.default_param_values = default_param_values
 
+        # input type check
+        if not isinstance(self.hidden_params, dict):
+            raise TypeError(
+                "SimulationModel: hidden_params input is not dictionary type"
+            )
+        if not isinstance(self.simulation_settings, dict):
+            raise TypeError(
+                "SimulationModel: simulation_settings input is not dictionary type"
+            )
+        if not isinstance(self.sample_boundaries, dict):
+            raise TypeError(
+                "SimulationModel: sample_boundaries input is not dictionary type"
+            )
+        if not isinstance(self.default_param_values, dict):
+            raise TypeError(
+                "SimulationModel: default_param_values input is not dictionary type"
+            )
+
         # unpach simulation parameters
         self.dt0 = self.simulation_settings["dt0"]
         self.max_time_iter = self.simulation_settings["max_time_iter"]
@@ -43,12 +65,23 @@ class SimulationModel(ABC):
 
     @abstractmethod
     def get_sim_data_dim(self):
-        raise NotImplementedError("get_sim_data_dim method is not implement")
+        raise NotImplementedError(
+            "SimulationModel: get_sim_data_dim method is not implement"
+        )
 
     @abstractmethod
     def simulator(self):
-        raise NotImplementedError("simulator method is not implement")
+        raise NotImplementedError("SimulationModel: simulator method is not implement")
 
     @abstractmethod
     def plot_sim_data(self):
-        raise NotImplementedError("plot_sim_data is not implement")
+        raise NotImplementedError("SimulationModel: plot_sim_data is not implement")
+
+    def get_time_points(self) -> npt.NDArray[Any]:
+        """Return time points for generation of simulation data
+
+        Returns:
+            t (np.array): time points corresponding to simulation data
+        """
+        t = np.linspace(0, (self.max_time_iter - 1) * self.dt0, num=self.max_time_iter)
+        return t

@@ -1,6 +1,8 @@
+import math
 import random
 import string
 
+import numpy as np
 import pytest
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
@@ -35,6 +37,19 @@ dummy_default_values = {}
 for name in dummy_param_names:
     dummy_default_values[name] = random.uniform(-1000, 1000)
 
+non_dict_input = [
+    random.randint(-1000, 1000),  # int
+    random.uniform(-1000, 1000),  # float
+    random.uniform(-1000, 1000) + random.uniform(-1000, 1000) * 1j,  # complex
+    random.choice([True, False]),  # bool
+    tuple(random.random() for x in range(random.randrange(10))),  # tuple
+    list(random.random() for x in range(random.randrange(10))),  # list
+    set(random.random() for x in range(random.randrange(10))),  # set
+    frozenset(random.random() for x in range(random.randrange(10))),  # frozenset
+    "".join(random.choices(string.ascii_letters, k=random.randrange(10))),  # string,
+    None,  # NoneType
+]
+
 
 def get_concrete_class(AbstractClass, *args):
     class ConcreteClass(AbstractClass):
@@ -49,7 +64,7 @@ def get_concrete_class(AbstractClass, *args):
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
-def test_simulation_model_init_random_input(simulation_settings):
+def test_simulation_model_init_random_valid_input(simulation_settings):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,
@@ -87,11 +102,43 @@ def test_simulation_model_init_pde():
     assert test_object.is_pde
 
 
+@pytest.mark.parametrize("non_dict_input", non_dict_input)
+def test_simulation_model_non_dict_input(non_dict_input):
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            non_dict_input,
+            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            dummy_sample_boundaries,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            non_dict_input,
+            dummy_sample_boundaries,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            non_dict_input,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            dummy_sample_boundaries,
+            non_dict_input,
+        )
+
+
 @pytest.mark.parametrize(
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
-def test_abstract_methods(simulation_settings):
+def test_simulation_model_abstract_methods(simulation_settings):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,
@@ -104,3 +151,22 @@ def test_abstract_methods(simulation_settings):
         test_object.simulator()
     with pytest.raises(NotImplementedError):
         test_object.plot_sim_data()
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_get_time_points_method(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    time_points = test_object.get_time_points()
+    print()
+    assert len(time_points.shape) == 1
+    assert time_points.shape[0] == simulation_settings["max_time_iter"]
+    assert np.any(np.diff(time_points) == np.diff(time_points)[0])
+    assert math.isclose(np.diff(time_points)[0], simulation_settings["dt0"])

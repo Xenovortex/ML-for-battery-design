@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 docopt = "*"
+numpy = "*"
 
 [dev-packages]
 black = "*"

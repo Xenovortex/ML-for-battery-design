@@ -85,3 +85,15 @@ class SimulationModel(ABC):
         """
         t = np.linspace(0, (self.max_time_iter - 1) * self.dt0, num=self.max_time_iter)
         return t
+
+    def get_param_names(self):
+        """Return list of names for sampled hidden parameters
+
+        Returns:
+            hidden_param_names (list): list of hidden parameter names
+        """
+        hidden_param_names = []
+        for name in self.default_param_values.keys():
+            if self.hidden_params["sample_" + name]:
+                hidden_param_names.append(name)
+        return hidden_param_names

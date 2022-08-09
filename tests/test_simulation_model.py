@@ -174,3 +174,23 @@ def test_simulation_model_get_time_points_method(simulation_settings):
     assert time_points.shape[0] == simulation_settings["max_time_iter"]
     assert np.any(np.diff(time_points) == np.diff(time_points)[0])
     assert math.isclose(np.diff(time_points)[0], simulation_settings["dt0"])
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_get_param_names_method(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    hidden_param_names = test_object.get_param_names()
+    assert len(hidden_param_names) == sum(dummy_hidden_params.values())
+    for key, value in dummy_hidden_params.items():
+        if value:
+            assert key[len("sample_") :] in hidden_param_names
+        else:
+            assert key[len("sample_") :] not in hidden_param_names

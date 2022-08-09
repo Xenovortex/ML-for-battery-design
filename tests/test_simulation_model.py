@@ -103,11 +103,15 @@ def test_simulation_model_init_pde():
 
 
 @pytest.mark.parametrize("non_dict_input", non_dict_input)
-def test_simulation_model_non_dict_input(non_dict_input):
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_non_dict_hidden_params(non_dict_input, simulation_settings):
     with pytest.raises(TypeError):
         get_concrete_class(SimulationModel)(
             non_dict_input,
-            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            simulation_settings,
             dummy_sample_boundaries,
             dummy_default_values,
         )
@@ -121,14 +125,14 @@ def test_simulation_model_non_dict_input(non_dict_input):
     with pytest.raises(TypeError):
         get_concrete_class(SimulationModel)(
             dummy_hidden_params,
-            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            simulation_settings,
             non_dict_input,
             dummy_default_values,
         )
     with pytest.raises(TypeError):
         get_concrete_class(SimulationModel)(
             dummy_hidden_params,
-            random.choice(dummy_ode_simulation_settings, dummy_pde_simulation_settings),
+            simulation_settings,
             dummy_sample_boundaries,
             non_dict_input,
         )

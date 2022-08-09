@@ -86,14 +86,26 @@ class SimulationModel(ABC):
         t = np.linspace(0, (self.max_time_iter - 1) * self.dt0, num=self.max_time_iter)
         return t
 
-    def get_param_names(self):
+    def get_param_names(self) -> list:
         """Return list of names for sampled hidden parameters
 
         Returns:
             hidden_param_names (list): list of hidden parameter names
         """
         hidden_param_names = []
-        for name in self.default_param_values.keys():
-            if self.hidden_params["sample_" + name]:
-                hidden_param_names.append(name)
+        for param_name in self.default_param_values.keys():
+            if self.hidden_params["sample_" + param_name]:
+                hidden_param_names.append(param_name)
         return hidden_param_names
+
+    def get_default_param_kwargs(self) -> dict:
+        """Return default constant values of not-sampled parameters as keyword arguments
+
+        Returns:
+            default_param_kwargs (dict): not-sampled parameters default values as keyword arguments
+        """
+        default_param_kwargs = {}
+        for param_name in self.default_param_values.keys():
+            if not self.hidden_params["sample_" + param_name]:
+                default_param_kwargs[param_name] = self.default_param_values[param_name]
+        return default_param_kwargs

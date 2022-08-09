@@ -194,3 +194,25 @@ def test_simulation_model_get_param_names_method(simulation_settings):
             assert key[len("sample_") :] in hidden_param_names
         else:
             assert key[len("sample_") :] not in hidden_param_names
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    default_param_kwargs = test_object.get_default_param_kwargs()
+    assert len(default_param_kwargs) == (
+        len(dummy_hidden_params) - sum(dummy_hidden_params.values())
+    )
+    for key, value in dummy_hidden_params.items():
+        if not value:
+            assert key[len("sample_") :] in default_param_kwargs
+        else:
+            assert key[len("sample_") :] not in default_param_kwargs

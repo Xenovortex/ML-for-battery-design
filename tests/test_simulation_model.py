@@ -214,5 +214,9 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
     for key, value in dummy_hidden_params.items():
         if not value:
             assert key[len("sample_") :] in default_param_kwargs
+            assert (
+                default_param_kwargs[key[len("sample_") :]]
+                == dummy_default_values[key[len("sample_") :]]
+            )
         else:
             assert key[len("sample_") :] not in default_param_kwargs

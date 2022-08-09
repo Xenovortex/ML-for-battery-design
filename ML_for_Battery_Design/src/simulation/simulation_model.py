@@ -54,7 +54,7 @@ class SimulationModel(ABC):
                 "SimulationModel: default_param_values input is not dictionary type"
             )
 
-        # unpach simulation parameters
+        # unpack simulation parameters
         self.dt0 = self.simulation_settings["dt0"]
         self.max_time_iter = self.simulation_settings["max_time_iter"]
         if "nr" in simulation_settings:
@@ -62,6 +62,11 @@ class SimulationModel(ABC):
             self.is_pde = True
         else:
             self.is_pde = False
+
+        # prepare simulation model
+        self.t = self.get_time_points()
+        self.hidden_param_names = self.get_param_names()
+        self.default_param_kwargs = self.get_default_param_kwargs()
 
     @abstractmethod
     def get_sim_data_dim(self):
@@ -109,3 +114,16 @@ class SimulationModel(ABC):
             if not self.hidden_params["sample_" + param_name]:
                 default_param_kwargs[param_name] = self.default_param_values[param_name]
         return default_param_kwargs
+
+    def samples_to_kwargs(self, samples: npt.NDArray[np.float32]) -> dict:
+        """Convert hidden parameter samples to keyword arguments and add default values for non-sampled parameters
+
+        Args:
+            samples (np.array[np.float32]): hidden parameter prior samples (batch size, number of parameters)
+
+        Returns:
+            param_kwargs (dict): prior samples and default constant non-sampled parameters as keyword arguments
+        """
+        sample_kwargs = dict(zip(self.hidden_param_names, samples))
+        param_kwargs = {**sample_kwargs, **self.default_param_kwargs}
+        return param_kwargs

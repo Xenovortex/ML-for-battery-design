@@ -77,6 +77,44 @@ def test_simulation_model_init_random_valid_input(simulation_settings):
     assert test_object.default_param_values == dummy_default_values
 
 
+@pytest.mark.parametrize("non_dict_input", non_dict_input)
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_init_non_dict_hidden_params(
+    non_dict_input, simulation_settings
+):
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            non_dict_input,
+            simulation_settings,
+            dummy_sample_boundaries,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            non_dict_input,
+            dummy_sample_boundaries,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            simulation_settings,
+            non_dict_input,
+            dummy_default_values,
+        )
+    with pytest.raises(TypeError):
+        get_concrete_class(SimulationModel)(
+            dummy_hidden_params,
+            simulation_settings,
+            dummy_sample_boundaries,
+            non_dict_input,
+        )
+
+
 def test_simulation_model_init_ode():
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
@@ -102,40 +140,20 @@ def test_simulation_model_init_pde():
     assert test_object.is_pde
 
 
-@pytest.mark.parametrize("non_dict_input", non_dict_input)
 @pytest.mark.parametrize(
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
-def test_simulation_model_non_dict_hidden_params(non_dict_input, simulation_settings):
-    with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
-            non_dict_input,
-            simulation_settings,
-            dummy_sample_boundaries,
-            dummy_default_values,
-        )
-    with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
-            dummy_hidden_params,
-            non_dict_input,
-            dummy_sample_boundaries,
-            dummy_default_values,
-        )
-    with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
-            dummy_hidden_params,
-            simulation_settings,
-            non_dict_input,
-            dummy_default_values,
-        )
-    with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
-            dummy_hidden_params,
-            simulation_settings,
-            dummy_sample_boundaries,
-            non_dict_input,
-        )
+def test_simulation_model_init_method_calls(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    assert np.array_equal(test_object.t, test_object.get_time_points())
+    assert test_object.hidden_param_names == test_object.get_param_names()
+    assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
 
 
 @pytest.mark.parametrize(

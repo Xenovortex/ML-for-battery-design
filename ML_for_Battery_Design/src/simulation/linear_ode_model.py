@@ -36,6 +36,11 @@ class LinearODEsystem(SimulationModel):
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:
+        """Return dimensions of simulation data
+
+        Returns:
+            sim_data_dim (tuple): dimensions of simulatoin data (time points, features)
+        """
         sim_data_dim = (self.max_time_iter, self.num_features)
         return sim_data_dim
 

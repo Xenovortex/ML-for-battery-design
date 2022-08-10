@@ -39,19 +39,27 @@ class SimulationModel(ABC):
         # input type check
         if not isinstance(self.hidden_params, dict):
             raise TypeError(
-                "SimulationModel: hidden_params input is not dictionary type"
+                "{}: hidden_params input is not dictionary type".format(
+                    self.__class__.__name__
+                )
             )
         if not isinstance(self.simulation_settings, dict):
             raise TypeError(
-                "SimulationModel: simulation_settings input is not dictionary type"
+                "{}: simulation_settings input is not dictionary type".format(
+                    self.__class__.__name__
+                )
             )
         if not isinstance(self.sample_boundaries, dict):
             raise TypeError(
-                "SimulationModel: sample_boundaries input is not dictionary type"
+                "{}: sample_boundaries input is not dictionary type".format(
+                    self.__class__.__name__
+                )
             )
         if not isinstance(self.default_param_values, dict):
             raise TypeError(
-                "SimulationModel: default_param_values input is not dictionary type"
+                "{}: default_param_values input is not dictionary type".format(
+                    self.__class__.__name__
+                )
             )
 
         # unpack simulation parameters
@@ -67,6 +75,14 @@ class SimulationModel(ABC):
         self.t = self.get_time_points()
         self.hidden_param_names = self.get_param_names()
         self.default_param_kwargs = self.get_default_param_kwargs()
+
+        # warning, if no hidden parameters
+        if len(self.hidden_param_names) == 0:
+            print(
+                "Warning: {} - No hidden parameters to sample.".format(
+                    self.__class__.__name__
+                )
+            )
 
     @abstractmethod
     def get_sim_data_dim(self):
@@ -115,15 +131,62 @@ class SimulationModel(ABC):
                 default_param_kwargs[param_name] = self.default_param_values[param_name]
         return default_param_kwargs
 
-    def samples_to_kwargs(self, samples: npt.NDArray[np.float32]) -> dict:
-        """Convert hidden parameter samples to keyword arguments and add default values for non-sampled parameters
+    def sample_to_kwargs(self, sample: npt.NDArray[np.float32]) -> dict:
+        """Convert hidden parameter sample to keyword arguments and add default values for non-sampled parameters
 
         Args:
-            samples (np.array[np.float32]): hidden parameter prior samples (batch size, number of parameters)
+            sample (npt.NDArray[np.float32]): hidden parameter prior sample
 
         Returns:
             param_kwargs (dict): prior samples and default constant non-sampled parameters as keyword arguments
         """
-        sample_kwargs = dict(zip(self.hidden_param_names, samples))
+        sample_kwargs = dict(zip(self.hidden_param_names, sample))
         param_kwargs = {**sample_kwargs, **self.default_param_kwargs}
         return param_kwargs
+
+    def reject_sampler(self, sample: npt.NDArray[np.float64]) -> bool:
+        """Dummy rejection sampler that accepts all samples (no rejection)
+
+        Args:
+            sample (npt.NDArray[np.float32]): hidden parameter prior sample
+
+
+        Returns:
+            bool: if sample should be rejected or not
+        """
+        return True
+
+    def uniform_prior(self, reject_sampling: bool = False) -> npt.NDArray[np.float32]:
+        """Generate samples from uniform prior
+
+        Args:
+            reject_sampling (bool, optional): If True, rejection sampling will be performed. Defaults to False.
+
+        Returns:
+            sample (npt.NDArray[np.float32]): uniform prior sample
+        """
+        lower_boundary = []
+        upper_boundary = []
+
+        for param_name in self.hidden_param_names:
+            lower_boundary.append(self.sample_boundaries[param_name][0])
+            upper_boundary.append(self.sample_boundaries[param_name][1])
+
+        if reject_sampling:
+            while True:
+                sample = np.random.uniform(
+                    low=lower_boundary,
+                    high=upper_boundary,
+                    size=len(self.hidden_param_names),
+                )
+
+                if not self.reject_sampler(sample):
+                    break
+        else:
+            sample = np.random.uniform(
+                low=lower_boundary,
+                high=upper_boundary,
+                size=len(self.hidden_param_names),
+            )
+
+        return sample.astype(np.float32)

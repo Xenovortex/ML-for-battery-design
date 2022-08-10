@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
+from tests.helpers import get_concrete_class
 
 dummy_param_names = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10)))
@@ -15,6 +16,10 @@ dummy_param_names = [
 dummy_hidden_params = {}
 for name in dummy_param_names:
     dummy_hidden_params["sample_" + name] = random.choice([True, False])
+
+dummy_no_hidden_params = {}
+for name in dummy_param_names:
+    dummy_no_hidden_params["sample_" + name] = False
 
 dummy_ode_simulation_settings = {
     "dt0": random.uniform(0, 10),
@@ -49,15 +54,6 @@ non_dict_input = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10))),  # string,
     None,  # NoneType
 ]
-
-
-def get_concrete_class(AbstractClass, *args):
-    class ConcreteClass(AbstractClass):
-        def __init__(self, *args) -> None:
-            super().__init__(*args)
-
-    ConcreteClass.__abstractmethods__ = frozenset()
-    return type("DummyConcreteClassOf" + AbstractClass.__name__, (ConcreteClass,), {})
 
 
 @pytest.mark.parametrize(
@@ -160,6 +156,24 @@ def test_simulation_model_init_method_calls(simulation_settings):
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
+def test_simulation_model_init_no_param_warning(simulation_settings, capsys):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_no_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    out, err = capsys.readouterr()
+    assert out == "Warning: {} - No hidden parameters to sample.\n".format(
+        type(test_object).__name__
+    )
+    assert err == ""
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
 def test_simulation_model_abstract_methods(simulation_settings):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
@@ -187,7 +201,7 @@ def test_simulation_model_get_time_points_method(simulation_settings):
         dummy_default_values,
     )
     time_points = test_object.get_time_points()
-    print()
+    assert isinstance(time_points, np.ndarray)
     assert len(time_points.shape) == 1
     assert time_points.shape[0] == simulation_settings["max_time_iter"]
     assert np.any(np.diff(time_points) == np.diff(time_points)[0])
@@ -206,6 +220,7 @@ def test_simulation_model_get_param_names_method(simulation_settings):
         dummy_default_values,
     )
     hidden_param_names = test_object.get_param_names()
+    assert isinstance(hidden_param_names, list)
     assert len(hidden_param_names) == sum(dummy_hidden_params.values())
     for key, value in dummy_hidden_params.items():
         if value:
@@ -226,6 +241,7 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
         dummy_default_values,
     )
     default_param_kwargs = test_object.get_default_param_kwargs()
+    assert isinstance(default_param_kwargs, dict)
     assert len(default_param_kwargs) == (
         len(dummy_hidden_params) - sum(dummy_hidden_params.values())
     )
@@ -238,3 +254,77 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
             )
         else:
             assert key[len("sample_") :] not in default_param_kwargs
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_sample_to_kwargs_method(simulation_settings):
+    dummy_samples = np.array(
+        [random.uniform(-1000, 1000) for x in range(sum(dummy_hidden_params.values()))]
+    ).astype(np.float32)
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    param_kwargs = test_object.sample_to_kwargs(dummy_samples)
+    assert isinstance(param_kwargs, dict)
+    assert len(param_kwargs) == len(dummy_hidden_params)
+    assert len(param_kwargs) == len(dummy_sample_boundaries)
+    assert len(param_kwargs) == len(dummy_default_values)
+    counter = 0
+    for key, value in dummy_hidden_params.items():
+        if value:
+            assert param_kwargs[key[len("sample_") :]] == dummy_samples[counter]
+            counter += 1
+        else:
+            assert (
+                param_kwargs[key[len("sample_") :]]
+                == dummy_default_values[key[len("sample_") :]]
+            )
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_uniform_prior_method(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+
+    def dummy_reject_sampler(self, sample):
+        return random.choice([True, False])
+
+    setattr(SimulationModel, "reject_sampler", dummy_reject_sampler)
+
+    sample = test_object.uniform_prior(reject_sampling=False)
+    sample_reject = test_object.uniform_prior(reject_sampling=True)
+
+    assert isinstance(sample, np.ndarray)
+    assert sample.dtype == np.float32
+    assert len(sample.shape) == 1
+    assert sample.shape[0] == sum(dummy_hidden_params.values())
+    counter = 0
+    for name, (lower_boundary, upper_boundary) in dummy_sample_boundaries.items():
+        if dummy_hidden_params["sample_" + name]:
+            assert sample[counter] >= lower_boundary
+            assert sample[counter] <= upper_boundary
+            counter += 1
+
+    assert isinstance(sample_reject, np.ndarray)
+    assert sample_reject.dtype == np.float32
+    assert len(sample_reject.shape) == 1
+    assert sample_reject.shape[0] == sum(dummy_hidden_params.values())
+    counter = 0
+    for name, (lower_boundary, upper_boundary) in dummy_sample_boundaries.items():
+        if dummy_hidden_params["sample_" + name]:
+            assert sample_reject[counter] >= lower_boundary
+            assert sample_reject[counter] <= upper_boundary
+            counter += 1

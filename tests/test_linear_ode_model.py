@@ -22,6 +22,7 @@ dummy_matrices = [
     (np.array([1, -4, 4, -1]), False),  # complex, both real part zero
 ]
 
+
 # ---------------- Test LinearODEsystem Class Inititialization --------------- #
 
 

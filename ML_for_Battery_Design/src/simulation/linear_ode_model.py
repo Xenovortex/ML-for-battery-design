@@ -32,7 +32,7 @@ class LinearODEsystem(SimulationModel):
         super().__init__(
             hidden_params, simulation_settings, sample_boundaries, default_param_values
         )
-        self.num_features = 2
+        self.num_features = 4
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:
@@ -66,8 +66,33 @@ class LinearODEsystem(SimulationModel):
         else:
             return False
 
-    def simulator(self):
-        pass
+    def simulator(self, params: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        """Returns analytical solutions u and v of linear ODE system
+
+        Args:
+           params (npt.NDArray[np.float32]): hidden prior paramters
+
+        Returns:
+            solution (npt.NDArray[np.float32]): ODE solutions of size (time points, 4) with entries (u(t).real, v(t).real, u(t).imag, v(t).imag) at each time point t
+        """
+        param_kwargs = self.sample_to_kwargs(params)
+        A = np.array(
+            [
+                [param_kwargs["a"], param_kwargs["b"]],
+                [param_kwargs["c"], param_kwargs["d"]],
+            ]
+        )
+        boundary_conditions = np.array([param_kwargs["u0"], param_kwargs["v0"]])
+        eigenvalues, eigenvectors = np.linalg.eig(A)
+        C = np.linalg.inv(eigenvectors) @ boundary_conditions
+        solution = eigenvectors @ np.array(
+            [
+                C[0] * np.exp(eigenvalues[0] * self.t),
+                C[1] * np.exp(eigenvalues[1] * self.t),
+            ]
+        )
+        solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
+        return solution.astype(np.float32)
 
     def plot_sim_data(self):
         pass

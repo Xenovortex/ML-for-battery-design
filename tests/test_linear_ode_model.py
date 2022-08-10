@@ -42,7 +42,7 @@ def test_linear_ode_system_init(capsys):
             LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
         )
         + "simulation data dimensions: {}\n".format(
-            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 2)
+            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 4)
         )
         + "\n"
         + "parameter values:\n"
@@ -87,7 +87,7 @@ def test_linear_ode_system_init(capsys):
     assert test_object.hidden_param_names == test_object.get_param_names()
     assert isinstance(test_object.default_param_kwargs, dict)
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
-    assert test_object.num_features == 2
+    assert test_object.num_features == 4
     assert out == expected_output
     assert err == ""
 
@@ -164,7 +164,7 @@ def test_linear_ode_system_print_internal_settings_method(capsys):
             LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
         )
         + "simulation data dimensions: {}\n".format(
-            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 2)
+            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 4)
         )
         + "\n"
         + "parameter values:\n"
@@ -214,7 +214,7 @@ def test_linear_ode_system_sample_to_kwargs_method():
 def test_linear_ode_system_uniform_prior_method():
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
     sample = test_object.uniform_prior(reject_sampling=False)
-    # sample_reject = test_object.uniform_prior(reject_sampling=True)
+    sample_reject = test_object.uniform_prior(reject_sampling=True)
 
     assert isinstance(sample, np.ndarray)
     assert sample.dtype == np.float32
@@ -229,7 +229,20 @@ def test_linear_ode_system_uniform_prior_method():
             assert sample[counter] <= upper_boundary
             counter += 1
 
-    # TODO: unit tests for reject_sampling=True
+    assert isinstance(sample_reject, np.ndarray)
+    assert sample_reject.dtype == np.float32
+    assert len(sample_reject.shape) == 1
+    assert sample_reject.shape[0] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    counter = 0
+    for name, (lower_boundary, upper_boundary) in LINEAR_ODE_SYSTEM_SETTINGS[
+        "sample_boundaries"
+    ].items():
+        if LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]["sample_" + name]:
+            assert sample_reject[counter] >= lower_boundary
+            assert sample_reject[counter] <= upper_boundary
+            counter += 1
 
 
 # --------------------- Test implemented abstract methods -------------------- #
@@ -244,7 +257,7 @@ def test_linear_ode_system_get_sim_data_sim_method():
         sim_data_dim[0]
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
-    assert sim_data_dim[1] == 2
+    assert sim_data_dim[1] == 4
 
 
 @pytest.mark.parametrize("dummy_matrix", dummy_matrices)
@@ -258,3 +271,12 @@ def test_linear_ode_system_reject_sampler_method(dummy_matrix):
     )
     reject = test_object.reject_sampler(sample)
     assert reject == dummy_matrix[1]
+
+
+def test_linear_ode_system_simulator_method():
+    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+    params = test_object.uniform_prior()
+    solution = test_object.simulator(params)
+    assert isinstance(solution, np.ndarray)
+    assert solution.dtype == np.float32
+    assert solution.shape == test_object.get_sim_data_dim()

@@ -139,6 +139,10 @@ class SimulationModel(ABC):
 
     def print_internal_settings(self) -> None:
         """Print internal simulation settings to console"""
+        print(80 * "#")
+        print()
+        print("Initialize simulation model: {}".format(self.__class__.__name__))
+        print(80 * "-")
         print("hidden parameters: {}".format(self.hidden_param_names))
         print("dt0: {}".format(self.dt0))
         print("max_time_iter: {}".format(self.max_time_iter))

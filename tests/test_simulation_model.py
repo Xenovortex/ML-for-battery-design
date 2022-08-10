@@ -8,9 +8,12 @@ import pytest
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 from tests.helpers import get_concrete_class
 
+# ------------------------------ Dummy Test Data ----------------------------- #
+
+
 dummy_param_names = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10)))
-    for i in range(1, random.randint(1, 10))
+    for i in range(0, random.randint(1, 10))
 ]
 
 dummy_hidden_params = {}
@@ -58,6 +61,9 @@ non_dict_input = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10))),  # string,
     None,  # NoneType
 ]
+
+
+# ------------------- Test Simulation Class Initialization ------------------- #
 
 
 @pytest.mark.parametrize(
@@ -194,6 +200,9 @@ def test_simulation_model_init_no_param_warning(simulation_settings, capsys):
     assert err == ""
 
 
+# --------------------------- Test Abstract Methods -------------------------- #
+
+
 @pytest.mark.parametrize(
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
@@ -220,6 +229,9 @@ def test_simulation_model_abstract_methods(simulation_settings, capsys):
         out, err = capsys.readouterr()
         assert out == ""
         assert err == "SimulationModel: plot_sim_data is not implement"
+
+
+# ------------------------------- Test Methods ------------------------------- #
 
 
 @pytest.mark.parametrize(
@@ -303,7 +315,13 @@ def test_simulation_model_print_internal_settings_ode(capsys):
     setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
 
     expected_output = (
-        "hidden parameters: {}\n".format(test_object.hidden_param_names)
+        80 * "#"
+        + "\n"
+        + "\n"
+        + "Initialize simulation model: {}\n".format(type(test_object).__name__)
+        + 80 * "-"
+        + "\n"
+        + "hidden parameters: {}\n".format(test_object.hidden_param_names)
         + "dt0: {}\n".format(test_object.dt0)
         + "max_time_iter: {}\n".format(test_object.max_time_iter)
         + "simulation data dimensions: {}\n".format((test_object.max_time_iter, 2))
@@ -341,7 +359,13 @@ def test_simulation_model_print_internal_settings_pde(capsys):
     setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
 
     expected_output = (
-        "hidden parameters: {}\n".format(test_object.hidden_param_names)
+        80 * "#"
+        + "\n"
+        + "\n"
+        + "Initialize simulation model: {}\n".format(type(test_object).__name__)
+        + 80 * "-"
+        + "\n"
+        + "hidden parameters: {}\n".format(test_object.hidden_param_names)
         + "dt0: {}\n".format(test_object.dt0)
         + "max_time_iter: {}\n".format(test_object.max_time_iter)
         + "nr: {}\n".format(test_object.nr)

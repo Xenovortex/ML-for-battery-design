@@ -1,11 +1,26 @@
 import random
 
 import numpy as np
+import pytest
 
 from ML_for_Battery_Design.src.settings.simulation.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SETTINGS,
 )
 from ML_for_Battery_Design.src.simulation.linear_ode_model import LinearODEsystem
+
+# ------------------------------ Dummy Test Data ----------------------------- #
+
+dummy_matrices = [
+    (np.array([1, 2, 3, 4]), True),  # real, negative and positive
+    (np.array([1, 2, 1, 4]), True),  # real, both positive
+    (np.array([-1, 0, 0, -3]), False),  # real, both negative
+    (np.array([0, 0, 0, 0]), False),  # real, both zero
+    (np.array([-1, 0, 0, 0]), False),  # real, negative and zero
+    (np.array([1, 0, 0, 0]), True),  # real, positive and zero
+    (np.array([1, -2, 3, 4]), True),  # complex, both real part positive
+    (np.array([1, -2, 5, -1]), False),  # complex, both real part negative
+    (np.array([1, -4, 4, -1]), False),  # complex, both real part zero
+]
 
 # ---------------- Test LinearODEsystem Class Inititialization --------------- #
 
@@ -229,3 +244,16 @@ def test_linear_ode_system_get_sim_data_sim_method():
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
     assert sim_data_dim[1] == 2
+
+
+@pytest.mark.parametrize("dummy_matrix", dummy_matrices)
+def test_linear_ode_system_reject_sampler_method(dummy_matrix):
+    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+    sample = np.concatenate(
+        (
+            dummy_matrix[0],
+            np.array([random.uniform(-1000, 1000), random.uniform(-1000, 1000)]),
+        )
+    )
+    reject = test_object.reject_sampler(sample)
+    assert reject == dummy_matrix[1]

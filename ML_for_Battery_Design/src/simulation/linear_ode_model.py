@@ -45,7 +45,26 @@ class LinearODEsystem(SimulationModel):
         return sim_data_dim
 
     def reject_sampler(self, sample: npt.NDArray[np.float64]) -> bool:
-        pass
+        """Reject sample if it will lead to unstable solutions
+
+        Args:
+            sample (npt.NDArray[np.float64]): uniform prior sample
+
+        Returns:
+            bool: If sample should be rejected or not
+        """
+        sample_kwargs = self.sample_to_kwargs(sample)
+        A = np.array(
+            [
+                [sample_kwargs["a"], sample_kwargs["b"]],
+                [sample_kwargs["c"], sample_kwargs["d"]],
+            ]
+        )
+        eigenvalues, _ = np.linalg.eig(A)
+        if np.any(eigenvalues.real > 0):
+            return True
+        else:
+            return False
 
     def simulator(self):
         pass

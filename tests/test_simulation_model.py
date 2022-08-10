@@ -16,6 +16,10 @@ dummy_param_names = [
 dummy_hidden_params = {}
 for name in dummy_param_names:
     dummy_hidden_params["sample_" + name] = random.choice([True, False])
+if sum(dummy_hidden_params.values()) == 0 and len(dummy_hidden_params) != 0:
+    dummy_hidden_params[
+        list(dummy_hidden_params.keys())[random.randrange(len(dummy_hidden_params))]
+    ] = True
 
 dummy_no_hidden_params = {}
 for name in dummy_param_names:
@@ -286,9 +290,8 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
 
 
 def test_simulation_model_print_internal_settings_ode(capsys):
-    for key in dummy_hidden_params.keys():
-        dummy_hidden_params[key] = True
-        break
+    if sum(dummy_hidden_params.values()) == 0:
+        dummy_hidden_params[list(dummy_hidden_params.keys())[0]] = True
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,
@@ -306,6 +309,47 @@ def test_simulation_model_print_internal_settings_ode(capsys):
         + "dt0: {}\n".format(test_object.dt0)
         + "max_time_iter: {}\n".format(test_object.max_time_iter)
         + "simulation data dimensions: {}\n".format((test_object.max_time_iter, 2))
+        + "\n"
+        + "parameter values:\n"
+    )
+
+    for key, value in dummy_hidden_params.items():
+        if value:
+            expected_output += "{}: {} -> boundary\n".format(
+                key[len("sample_") :], dummy_sample_boundaries[key[len("sample_") :]]
+            )
+        else:
+            expected_output += "{}: {} -> constant\n".format(
+                key[len("sample_") :], dummy_default_values[key[len("sample_") :]]
+            )
+
+    test_object.print_internal_settings()
+    out, err = capsys.readouterr()
+    assert out == expected_output
+    assert err == ""
+
+
+def test_simulation_model_print_internal_settings_pde(capsys):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        dummy_pde_simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+
+    def dummy_get_sim_data_dim(self):
+        return (self.max_time_iter, self.nr, 2)
+
+    setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
+
+    expected_output = (
+        "hidden parameters: {}\n".format(test_object.hidden_param_names)
+        + "dt0: {}\n".format(test_object.dt0)
+        + "max_time_iter: {}\n".format(test_object.max_time_iter)
+        + "nr: {}\n".format(test_object.nr)
+        + "simulation data dimensions: {}\n".format(
+            (test_object.max_time_iter, test_object.nr, 2)
+        )
         + "\n"
         + "parameter values:\n"
     )

@@ -150,11 +150,10 @@ class SimulationModel(ABC):
         Args:
             sample (npt.NDArray[np.float32]): hidden parameter prior sample
 
-
         Returns:
             bool: if sample should be rejected or not
         """
-        return True
+        return False
 
     def uniform_prior(self, reject_sampling: bool = False) -> npt.NDArray[np.float32]:
         """Generate samples from uniform prior

@@ -261,7 +261,7 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
 def test_simulation_model_sample_to_kwargs_method(simulation_settings):
-    dummy_samples = np.array(
+    dummy_sample = np.array(
         [random.uniform(-1000, 1000) for x in range(sum(dummy_hidden_params.values()))]
     ).astype(np.float32)
     test_object = get_concrete_class(SimulationModel)(
@@ -270,7 +270,7 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
         dummy_sample_boundaries,
         dummy_default_values,
     )
-    param_kwargs = test_object.sample_to_kwargs(dummy_samples)
+    param_kwargs = test_object.sample_to_kwargs(dummy_sample)
     assert isinstance(param_kwargs, dict)
     assert len(param_kwargs) == len(dummy_hidden_params)
     assert len(param_kwargs) == len(dummy_sample_boundaries)
@@ -278,13 +278,30 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
     counter = 0
     for key, value in dummy_hidden_params.items():
         if value:
-            assert param_kwargs[key[len("sample_") :]] == dummy_samples[counter]
+            assert param_kwargs[key[len("sample_") :]] == dummy_sample[counter]
             counter += 1
         else:
             assert (
                 param_kwargs[key[len("sample_") :]]
                 == dummy_default_values[key[len("sample_") :]]
             )
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_reject_sampler(simulation_settings):
+    dummy_sample = np.array(
+        [random.uniform(-1000, 1000) for x in range(sum(dummy_hidden_params.values()))]
+    ).astype(np.float32)
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    assert not test_object.reject_sampler(dummy_sample)
 
 
 @pytest.mark.parametrize(
@@ -298,11 +315,6 @@ def test_simulation_model_uniform_prior_method(simulation_settings):
         dummy_sample_boundaries,
         dummy_default_values,
     )
-
-    def dummy_reject_sampler(self, sample):
-        return random.choice([True, False])
-
-    setattr(SimulationModel, "reject_sampler", dummy_reject_sampler)
 
     sample = test_object.uniform_prior(reject_sampling=False)
     sample_reject = test_object.uniform_prior(reject_sampling=True)

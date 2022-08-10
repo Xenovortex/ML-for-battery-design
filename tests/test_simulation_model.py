@@ -1,4 +1,3 @@
-import math
 import random
 import string
 
@@ -8,9 +7,12 @@ import pytest
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 from tests.helpers import get_concrete_class
 
+# ------------------------------ Dummy Test Data ----------------------------- #
+
+
 dummy_param_names = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10)))
-    for i in range(1, random.randint(1, 10))
+    for i in range(0, random.randint(1, 10))
 ]
 
 dummy_hidden_params = {}
@@ -58,6 +60,9 @@ non_dict_input = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10))),  # string,
     None,  # NoneType
 ]
+
+
+# ----------------- Test SimulationModel Class Initialization ---------------- #
 
 
 @pytest.mark.parametrize(
@@ -142,6 +147,9 @@ def test_simulation_model_init_ode():
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.dt0, float)
+    assert isinstance(test_object.max_time_iter, int)
+    assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_ode_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_ode_simulation_settings["max_time_iter"]
     assert not test_object.is_pde
@@ -154,6 +162,10 @@ def test_simulation_model_init_pde():
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.dt0, float)
+    assert isinstance(test_object.max_time_iter, int)
+    assert isinstance(test_object.nr, int)
+    assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_pde_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_pde_simulation_settings["max_time_iter"]
     assert test_object.nr == dummy_pde_simulation_settings["nr"]
@@ -171,6 +183,9 @@ def test_simulation_model_init_method_calls(simulation_settings):
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.t, np.ndarray)
+    assert isinstance(test_object.hidden_param_names, list)
+    assert isinstance(test_object.default_param_kwargs, dict)
     assert np.array_equal(test_object.t, test_object.get_time_points())
     assert test_object.hidden_param_names == test_object.get_param_names()
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
@@ -192,6 +207,9 @@ def test_simulation_model_init_no_param_warning(simulation_settings, capsys):
         type(test_object).__name__
     )
     assert err == ""
+
+
+# --------------------------- Test Abstract Methods -------------------------- #
 
 
 @pytest.mark.parametrize(
@@ -222,6 +240,9 @@ def test_simulation_model_abstract_methods(simulation_settings, capsys):
         assert err == "SimulationModel: plot_sim_data is not implement"
 
 
+# ------------------------------- Test Methods ------------------------------- #
+
+
 @pytest.mark.parametrize(
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
@@ -237,8 +258,7 @@ def test_simulation_model_get_time_points_method(simulation_settings):
     assert isinstance(time_points, np.ndarray)
     assert len(time_points.shape) == 1
     assert time_points.shape[0] == simulation_settings["max_time_iter"]
-    assert np.any(np.diff(time_points) == np.diff(time_points)[0])
-    assert math.isclose(np.diff(time_points)[0], simulation_settings["dt0"])
+    assert np.all(np.isclose(np.diff(time_points), simulation_settings["dt0"]))
 
 
 @pytest.mark.parametrize(
@@ -289,7 +309,7 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
             assert key[len("sample_") :] not in default_param_kwargs
 
 
-def test_simulation_model_print_internal_settings_ode(capsys):
+def test_simulation_model_print_internal_settings_method_ode(capsys):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,
@@ -303,7 +323,13 @@ def test_simulation_model_print_internal_settings_ode(capsys):
     setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
 
     expected_output = (
-        "hidden parameters: {}\n".format(test_object.hidden_param_names)
+        80 * "#"
+        + "\n"
+        + "\n"
+        + "Initialize simulation model: {}\n".format(type(test_object).__name__)
+        + 80 * "-"
+        + "\n"
+        + "hidden parameters: {}\n".format(test_object.hidden_param_names)
         + "dt0: {}\n".format(test_object.dt0)
         + "max_time_iter: {}\n".format(test_object.max_time_iter)
         + "simulation data dimensions: {}\n".format((test_object.max_time_iter, 2))
@@ -327,7 +353,7 @@ def test_simulation_model_print_internal_settings_ode(capsys):
     assert err == ""
 
 
-def test_simulation_model_print_internal_settings_pde(capsys):
+def test_simulation_model_print_internal_settings_method_pde(capsys):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_pde_simulation_settings,
@@ -341,7 +367,13 @@ def test_simulation_model_print_internal_settings_pde(capsys):
     setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
 
     expected_output = (
-        "hidden parameters: {}\n".format(test_object.hidden_param_names)
+        80 * "#"
+        + "\n"
+        + "\n"
+        + "Initialize simulation model: {}\n".format(type(test_object).__name__)
+        + 80 * "-"
+        + "\n"
+        + "hidden parameters: {}\n".format(test_object.hidden_param_names)
         + "dt0: {}\n".format(test_object.dt0)
         + "max_time_iter: {}\n".format(test_object.max_time_iter)
         + "nr: {}\n".format(test_object.nr)
@@ -388,15 +420,12 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
     assert len(param_kwargs) == len(dummy_sample_boundaries)
     assert len(param_kwargs) == len(dummy_default_values)
     counter = 0
-    for key, value in dummy_hidden_params.items():
-        if value:
-            assert param_kwargs[key[len("sample_") :]] == dummy_sample[counter]
+    for key, value in param_kwargs.items():
+        if dummy_hidden_params["sample_" + key]:
+            assert value == dummy_sample[counter]
             counter += 1
         else:
-            assert (
-                param_kwargs[key[len("sample_") :]]
-                == dummy_default_values[key[len("sample_") :]]
-            )
+            assert value == dummy_default_values[key]
 
 
 @pytest.mark.parametrize(

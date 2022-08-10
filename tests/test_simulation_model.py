@@ -1,4 +1,3 @@
-import math
 import random
 import string
 
@@ -63,7 +62,7 @@ non_dict_input = [
 ]
 
 
-# ------------------- Test Simulation Class Initialization ------------------- #
+# ----------------- Test SimulationModel Class Initialization ---------------- #
 
 
 @pytest.mark.parametrize(
@@ -148,6 +147,9 @@ def test_simulation_model_init_ode():
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.dt0, float)
+    assert isinstance(test_object.max_time_iter, int)
+    assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_ode_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_ode_simulation_settings["max_time_iter"]
     assert not test_object.is_pde
@@ -160,6 +162,10 @@ def test_simulation_model_init_pde():
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.dt0, float)
+    assert isinstance(test_object.max_time_iter, int)
+    assert isinstance(test_object.nr, int)
+    assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_pde_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_pde_simulation_settings["max_time_iter"]
     assert test_object.nr == dummy_pde_simulation_settings["nr"]
@@ -177,6 +183,9 @@ def test_simulation_model_init_method_calls(simulation_settings):
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    assert isinstance(test_object.t, np.ndarray)
+    assert isinstance(test_object.hidden_param_names, list)
+    assert isinstance(test_object.default_param_kwargs, dict)
     assert np.array_equal(test_object.t, test_object.get_time_points())
     assert test_object.hidden_param_names == test_object.get_param_names()
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
@@ -249,8 +258,7 @@ def test_simulation_model_get_time_points_method(simulation_settings):
     assert isinstance(time_points, np.ndarray)
     assert len(time_points.shape) == 1
     assert time_points.shape[0] == simulation_settings["max_time_iter"]
-    assert np.any(np.diff(time_points) == np.diff(time_points)[0])
-    assert math.isclose(np.diff(time_points)[0], simulation_settings["dt0"])
+    assert np.all(np.isclose(np.diff(time_points), simulation_settings["dt0"]))
 
 
 @pytest.mark.parametrize(
@@ -301,7 +309,7 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
             assert key[len("sample_") :] not in default_param_kwargs
 
 
-def test_simulation_model_print_internal_settings_ode(capsys):
+def test_simulation_model_print_internal_settings_method_ode(capsys):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,
@@ -345,7 +353,7 @@ def test_simulation_model_print_internal_settings_ode(capsys):
     assert err == ""
 
 
-def test_simulation_model_print_internal_settings_pde(capsys):
+def test_simulation_model_print_internal_settings_method_pde(capsys):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_pde_simulation_settings,
@@ -412,15 +420,12 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
     assert len(param_kwargs) == len(dummy_sample_boundaries)
     assert len(param_kwargs) == len(dummy_default_values)
     counter = 0
-    for key, value in dummy_hidden_params.items():
-        if value:
-            assert param_kwargs[key[len("sample_") :]] == dummy_sample[counter]
+    for key, value in param_kwargs.items():
+        if dummy_hidden_params["sample_" + key]:
+            assert value == dummy_sample[counter]
             counter += 1
         else:
-            assert (
-                param_kwargs[key[len("sample_") :]]
-                == dummy_default_values[key[len("sample_") :]]
-            )
+            assert value == dummy_default_values[key]
 
 
 @pytest.mark.parametrize(

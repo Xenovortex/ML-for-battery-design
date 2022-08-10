@@ -10,13 +10,13 @@ from tests.helpers import get_concrete_class
 
 dummy_param_names = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10)))
-    for i in range(random.randrange(10))
+    for i in range(1, random.randint(1, 10))
 ]
 
 dummy_hidden_params = {}
 for name in dummy_param_names:
     dummy_hidden_params["sample_" + name] = random.choice([True, False])
-if sum(dummy_hidden_params.values()) == 0 and len(dummy_hidden_params) != 0:
+if sum(dummy_hidden_params.values()) == 0:
     dummy_hidden_params[
         list(dummy_hidden_params.keys())[random.randrange(len(dummy_hidden_params))]
     ] = True
@@ -290,8 +290,6 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
 
 
 def test_simulation_model_print_internal_settings_ode(capsys):
-    if sum(dummy_hidden_params.values()) == 0:
-        dummy_hidden_params[list(dummy_hidden_params.keys())[0]] = True
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,

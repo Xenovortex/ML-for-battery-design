@@ -131,6 +131,32 @@ class SimulationModel(ABC):
                 default_param_kwargs[param_name] = self.default_param_values[param_name]
         return default_param_kwargs
 
+    def print_internal_settings(self) -> None:
+        """Print internal simulation settings to console"""
+        print("hidden parameters: {}".format(self.hidden_param_names))
+        print("dt0: {}".format(self.dt0))
+        print("max_time_iter: {}".format(self.max_time_iter))
+        if self.is_pde:
+            print("nr: {}".format(self.nr))
+        print("simulation data dimensions: {}".format(self.get_sim_data_dim()))
+        print()
+        print("parameter values:")
+        for key, value in self.hidden_params.items():
+            if value:
+                print(
+                    "{}: {} -> boundary".format(
+                        key[len("sample_") :],
+                        self.sample_boundaries[key[len("sample_") :]],
+                    )
+                )
+            else:
+                print(
+                    "{}: {} -> constant".format(
+                        key[len("sample_") :],
+                        self.default_param_values[key[len("sample_") :]],
+                    )
+                )
+
     def sample_to_kwargs(self, sample: npt.NDArray[np.float32]) -> dict:
         """Convert hidden parameter sample to keyword arguments and add default values for non-sampled parameters
 

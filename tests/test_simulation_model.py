@@ -1,6 +1,5 @@
 import random
 import string
-from sys import implementation
 
 import numpy as np
 import pytest
@@ -190,6 +189,20 @@ def test_simulation_model_init_method_calls(simulation_settings):
     assert np.array_equal(test_object.t, test_object.get_time_points())
     assert test_object.hidden_param_names == test_object.get_param_names()
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_init_bayesflow_prior(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+    assert isinstance(test_object.model_prior, Prior)
 
 
 @pytest.mark.parametrize(
@@ -515,3 +528,36 @@ def test_simulation_model_get_bayesflow_amortizer_ode():
     assert isinstance(prior, Prior)
     assert isinstance(simulator, Simulator)
     assert isinstance(generative_model, GenerativeModel)
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_get_prior_mean_std(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+
+    setattr(
+        test_object,
+        "model_prior",
+        Prior(
+            prior_fun=test_object.uniform_prior,
+            param_names=test_object.get_param_names(),
+        ),
+    )
+
+    prior_means, prior_stds = test_object.get_prior_means_stds()
+
+    assert isinstance(prior_means, np.ndarray)
+    assert isinstance(prior_stds, np.ndarray)
+    assert len(prior_means.shape) == 2
+    assert prior_means.shape[0] == 1
+    assert prior_means.shape[1] == sum(dummy_hidden_params.values())
+    assert len(prior_stds.shape) == 2
+    assert prior_stds.shape[0] == 1
+    assert prior_stds.shape[1] == sum(dummy_hidden_params.values())

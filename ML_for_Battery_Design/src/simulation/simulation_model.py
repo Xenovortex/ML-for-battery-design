@@ -83,6 +83,11 @@ class SimulationModel(ABC):
         self.hidden_param_names = self.get_param_names()
         self.default_param_kwargs = self.get_default_param_kwargs()
 
+        # init bayesflow Prior
+        self.model_prior = Prior(
+            prior_fun=self.uniform_prior, param_names=self.hidden_param_names
+        )
+
         # warning, if no hidden parameters
         if len(self.hidden_param_names) == 0:
             print(
@@ -235,7 +240,7 @@ class SimulationModel(ABC):
 
     def get_bayesflow_amortizer(
         self,
-    ) -> Tuple[Type[Prior], Type[Simulator], Type[GenerativeModel],]:
+    ) -> Tuple[Type[Prior], Type[Simulator], Type[GenerativeModel]]:
         """Initialize and return BayesFlow amortizer classes: Prior, Simulator, GenerativeModel
 
         Returns:
@@ -252,5 +257,12 @@ class SimulationModel(ABC):
         )
         return model_prior, model_simulator, model_generative_model
 
-    def get_prior_mean_std(self) -> Tuple:
-        pass
+    def get_prior_means_stds(self) -> Tuple[npt.NDArray[Any], npt.NDArray[Any]]:
+        """Estimates prior means and standard deviations for z-standardization
+
+        Returns:
+            prior_means (npt.NDArray[Any]): estimated mean of joint prior
+            prior_stds (npt.NDArray[Any]): estimated standard deviation of joint prior
+        """
+        prior_means, prior_stds = self.model_prior.estimate_means_and_stds()
+        return prior_means, prior_stds

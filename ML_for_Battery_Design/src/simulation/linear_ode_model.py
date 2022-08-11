@@ -1,3 +1,6 @@
+from typing import Type
+
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
@@ -20,6 +23,7 @@ class LinearODEsystem(SimulationModel):
         simulation_settings: dict,
         sample_boundaries: dict,
         default_param_values: dict,
+        plot_settings: dict,
     ) -> None:
         """Initializes a :class:LinearODEsystem simulation model
 
@@ -28,11 +32,13 @@ class LinearODEsystem(SimulationModel):
             simulation_settings (dict): settings for generating simulation data
             sample_boundaries (dict): sampling boundaries for each hidden parameter
             default_param_values (dict): default values of hidden parameters, if not sampled
+            plot_settings (dict): settings for plotting simulation data
         """
         super().__init__(
             hidden_params, simulation_settings, sample_boundaries, default_param_values
         )
         self.num_features = 4
+        self.plot_settings = plot_settings
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:
@@ -66,7 +72,7 @@ class LinearODEsystem(SimulationModel):
         else:
             return False
 
-    def simulator(self, params: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    def solver(self, params: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         """Returns analytical solutions u and v of linear ODE system
 
         Args:
@@ -94,5 +100,11 @@ class LinearODEsystem(SimulationModel):
         solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
         return solution.astype(np.float32)
 
-    def plot_sim_data(self):
-        pass
+    def plot_sim_data(self, filename: str = None) -> None:
+        """Generate simulation data plots
+
+        Args:
+            filename (str, optional): If given, save plot under results/filename/plots/filename-sim_data.png. Defaults to None.
+        """
+        plt.rcParams["font.size"] = self.plot_settings["font_size"]
+        # TODO

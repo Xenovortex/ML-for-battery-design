@@ -6,6 +6,11 @@ name = "pypi"
 [packages]
 docopt = "*"
 numpy = "*"
+matplotlib = "*"
+tensorflow-gpu = "*"
+sklearn = "*"
+pandas = "*"
+seaborn = "*"
 
 [dev-packages]
 black = "*"
@@ -21,7 +26,9 @@ mkdocs-material = "*"
 mkgendocs = "*"
 
 [scripts]
-main = "python ./ML_for_Battery_Design/src/main.py"
+main = "bash ./bin/main.sh"
+test = "bash ./bin/test.sh"
+cov = "bash ./bin/cov_report.sh"
 
 [requires]
 python_version = "3.9"

@@ -1,8 +1,10 @@
 import random
 import string
+from sys import implementation
 
 import numpy as np
 import pytest
+from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 from tests.helpers import get_concrete_class
@@ -61,7 +63,6 @@ non_dict_input = [
     None,  # NoneType
 ]
 
-
 # ----------------- Test SimulationModel Class Initialization ---------------- #
 
 
@@ -103,7 +104,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             test_object.__class__.__name__
         )
     with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
+        test_object = get_concrete_class(SimulationModel)(
             dummy_hidden_params,
             non_dict_input,
             dummy_sample_boundaries,
@@ -115,7 +116,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             test_object.__class__.__name__
         )
     with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
+        test_object = get_concrete_class(SimulationModel)(
             dummy_hidden_params,
             simulation_settings,
             non_dict_input,
@@ -127,7 +128,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             test_object.__class__.__name__
         )
     with pytest.raises(TypeError):
-        get_concrete_class(SimulationModel)(
+        test_object = get_concrete_class(SimulationModel)(
             dummy_hidden_params,
             simulation_settings,
             dummy_sample_boundaries,
@@ -227,17 +228,24 @@ def test_simulation_model_abstract_methods(simulation_settings, capsys):
         test_object.get_sim_data_dim()
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "SimulationModel: get_sim_data_dim method is not implement"
+        assert err == "{}: get_sim_data_dim method is not implement".format(
+            test_object.__class__.__name__
+        )
     with pytest.raises(NotImplementedError):
-        test_object.simulator()
+        params = np.random.uniform(-1000, 1000, size=sum(dummy_hidden_params.values()))
+        test_object.solver(params)
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "SimulationModel: simulator method is not implement"
+        assert err == "{}: solver method is not implement".format(
+            test_object.__class__.__name__
+        )
     with pytest.raises(NotImplementedError):
         test_object.plot_sim_data()
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "SimulationModel: plot_sim_data is not implement"
+        assert err == "{}: plot_sim_data is not implement".format(
+            test_object.__class__.__name__
+        )
 
 
 # ------------------------------- Test Methods ------------------------------- #
@@ -317,10 +325,10 @@ def test_simulation_model_print_internal_settings_method_ode(capsys):
         dummy_default_values,
     )
 
-    def dummy_get_sim_data_dim(self):
-        return (self.max_time_iter, 2)
+    def dummy_get_sim_data_dim_ode():
+        return (dummy_ode_simulation_settings["max_time_iter"], 2)
 
-    setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
+    setattr(test_object, "get_sim_data_dim", dummy_get_sim_data_dim_ode)
 
     expected_output = (
         80 * "#"
@@ -361,10 +369,14 @@ def test_simulation_model_print_internal_settings_method_pde(capsys):
         dummy_default_values,
     )
 
-    def dummy_get_sim_data_dim(self):
-        return (self.max_time_iter, self.nr, 2)
+    def dummy_get_sim_data_dim_pde():
+        return (
+            dummy_pde_simulation_settings["max_time_iter"],
+            dummy_pde_simulation_settings["nr"],
+            2,
+        )
 
-    setattr(SimulationModel, "get_sim_data_dim", dummy_get_sim_data_dim)
+    setattr(test_object, "get_sim_data_dim", dummy_get_sim_data_dim_pde)
 
     expected_output = (
         80 * "#"
@@ -405,15 +417,15 @@ def test_simulation_model_print_internal_settings_method_pde(capsys):
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
 def test_simulation_model_sample_to_kwargs_method(simulation_settings):
-    dummy_sample = np.array(
-        [random.uniform(-1000, 1000) for x in range(sum(dummy_hidden_params.values()))]
-    ).astype(np.float32)
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    dummy_sample = np.random.uniform(
+        -1000, 1000, size=sum(dummy_hidden_params.values())
+    ).astype(np.float32)
     param_kwargs = test_object.sample_to_kwargs(dummy_sample)
     assert isinstance(param_kwargs, dict)
     assert len(param_kwargs) == len(dummy_hidden_params)
@@ -433,15 +445,15 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
 def test_simulation_model_reject_sampler(simulation_settings):
-    dummy_sample = np.array(
-        [random.uniform(-1000, 1000) for x in range(sum(dummy_hidden_params.values()))]
-    ).astype(np.float32)
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
     )
+    dummy_sample = np.random.uniform(
+        -1000, 1000, size=sum(dummy_hidden_params.values())
+    ).astype(np.float32)
     assert not test_object.reject_sampler(dummy_sample)
 
 
@@ -481,3 +493,25 @@ def test_simulation_model_uniform_prior_method(simulation_settings):
             assert sample_reject[counter] >= lower_boundary
             assert sample_reject[counter] <= upper_boundary
             counter += 1
+
+
+def test_simulation_model_get_bayesflow_amortizer_ode():
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        dummy_ode_simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+
+    def dummy_solver(params):
+        return np.random.uniform(
+            -1000, 1000, size=(dummy_ode_simulation_settings["max_time_iter"], 2)
+        )
+
+    setattr(test_object, "solver", dummy_solver)
+
+    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+
+    assert isinstance(prior, Prior)
+    assert isinstance(simulator, Simulator)
+    assert isinstance(generative_model, GenerativeModel)

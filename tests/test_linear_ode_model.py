@@ -88,6 +88,7 @@ def test_linear_ode_system_init(capsys):
     assert isinstance(test_object.default_param_kwargs, dict)
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
     assert test_object.num_features == 4
+    assert test_object.plot_settings == LINEAR_ODE_SYSTEM_SETTINGS["plot_settings"]
     assert out == expected_output
     assert err == ""
 
@@ -273,10 +274,10 @@ def test_linear_ode_system_reject_sampler_method(dummy_matrix):
     assert reject == dummy_matrix[1]
 
 
-def test_linear_ode_system_simulator_method():
+def test_linear_ode_system_solver_method():
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
     params = test_object.uniform_prior()
-    solution = test_object.simulator(params)
+    solution = test_object.solver(params)
     assert isinstance(solution, np.ndarray)
     assert solution.dtype == np.float32
     assert solution.shape == test_object.get_sim_data_dim()

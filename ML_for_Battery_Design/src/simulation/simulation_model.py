@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
+from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 
 
 class SimulationModel(ABC):
@@ -93,16 +94,22 @@ class SimulationModel(ABC):
     @abstractmethod
     def get_sim_data_dim(self):
         raise NotImplementedError(
-            "SimulationModel: get_sim_data_dim method is not implement"
+            "{}: get_sim_data_dim method is not implement".format(
+                self.__class__.__name__
+            )
         )
 
     @abstractmethod
-    def simulator(self):
-        raise NotImplementedError("SimulationModel: simulator method is not implement")
+    def solver(self, params):
+        raise NotImplementedError(
+            "{}: solver method is not implement".format(self.__class__.__name__)
+        )
 
     @abstractmethod
     def plot_sim_data(self):
-        raise NotImplementedError("SimulationModel: plot_sim_data is not implement")
+        raise NotImplementedError(
+            "{}: plot_sim_data is not implement".format(self.__class__.__name__)
+        )
 
     def get_time_points(self) -> npt.NDArray[Any]:
         """Return time points for generation of simulation data
@@ -225,3 +232,25 @@ class SimulationModel(ABC):
             )
 
         return sample.astype(np.float32)
+
+    def get_bayesflow_amortizer(
+        self,
+    ) -> Tuple[Type[Prior], Type[Simulator], Type[GenerativeModel],]:
+        """Initialize and return BayesFlow amortizer classes: Prior, Simulator, GenerativeModel
+
+        Returns:
+            prior (bayesflow.Prior): Prior class from BayesFlow framework
+            simulator (bayesflow.Simulator): Simulator class from BayesFlow framework
+            generative_model (bayesflow.GenerativeModel): GenerativeModel class from BayesFlow framework
+        """
+        model_prior = Prior(
+            prior_fun=self.uniform_prior, param_names=self.hidden_param_names
+        )
+        model_simulator = Simulator(simulator_fun=self.solver)
+        model_generative_model = GenerativeModel(
+            model_prior, model_simulator, name=self.__class__.__name__
+        )
+        return model_prior, model_simulator, model_generative_model
+
+    def get_prior_mean_std(self) -> Tuple:
+        pass

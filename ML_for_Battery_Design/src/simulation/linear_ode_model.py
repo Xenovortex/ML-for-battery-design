@@ -37,6 +37,12 @@ class LinearODEsystem(SimulationModel):
         )
         self.num_features = 4
         self.plot_settings = plot_settings
+        (
+            self.prior,
+            self.simulator,
+            self.generative_model,
+        ) = self.get_bayesflow_amortizer()
+        self.prior_means, self.prior_stds = self.get_prior_means_stds()
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:

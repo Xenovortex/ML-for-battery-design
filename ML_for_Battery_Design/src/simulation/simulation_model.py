@@ -21,6 +21,7 @@ class SimulationModel(ABC):
         t (npt.NDArray[Any]): time points at which the solutions should be evaluated
         hidden_param_names (list): list of hidden parameter names
         default_param_kwargs (dict): not-sampled parameters default values as keyword arguments
+        model_prior (bayesflow.Prior): prior sample generator wrapped in bayesflow Prior object
     """
 
     def __init__(
@@ -84,7 +85,7 @@ class SimulationModel(ABC):
         self.default_param_kwargs = self.get_default_param_kwargs()
 
         # init bayesflow Prior
-        self.model_prior = Prior(
+        self.prior = Prior(
             prior_fun=self.uniform_prior, param_names=self.hidden_param_names
         )
 
@@ -248,14 +249,12 @@ class SimulationModel(ABC):
             simulator (bayesflow.Simulator): Simulator class from BayesFlow framework
             generative_model (bayesflow.GenerativeModel): GenerativeModel class from BayesFlow framework
         """
-        model_prior = Prior(
-            prior_fun=self.uniform_prior, param_names=self.hidden_param_names
+        prior = Prior(prior_fun=self.uniform_prior, param_names=self.hidden_param_names)
+        simulator = Simulator(simulator_fun=self.solver)
+        generative_model = GenerativeModel(
+            prior, simulator, name=self.__class__.__name__
         )
-        model_simulator = Simulator(simulator_fun=self.solver)
-        model_generative_model = GenerativeModel(
-            model_prior, model_simulator, name=self.__class__.__name__
-        )
-        return model_prior, model_simulator, model_generative_model
+        return prior, simulator, generative_model
 
     def get_prior_means_stds(self) -> Tuple[npt.NDArray[Any], npt.NDArray[Any]]:
         """Estimates prior means and standard deviations for z-standardization
@@ -264,5 +263,5 @@ class SimulationModel(ABC):
             prior_means (npt.NDArray[Any]): estimated mean of joint prior
             prior_stds (npt.NDArray[Any]): estimated standard deviation of joint prior
         """
-        prior_means, prior_stds = self.model_prior.estimate_means_and_stds()
+        prior_means, prior_stds = self.prior.estimate_means_and_stds()
         return prior_means, prior_stds

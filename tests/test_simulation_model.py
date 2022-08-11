@@ -13,20 +13,31 @@ from tests.helpers import get_concrete_class
 
 dummy_param_names = [
     "".join(random.choices(string.ascii_letters, k=random.randrange(10)))
-    for i in range(0, random.randint(1, 10))
+    for i in range(0, random.randint(2, 10))
 ]
 
 dummy_hidden_params = {}
 for name in dummy_param_names:
     dummy_hidden_params["sample_" + name] = random.choice([True, False])
+true_param_idx = list(dummy_hidden_params.keys())[
+    random.randrange(len(dummy_hidden_params))
+]
 if sum(dummy_hidden_params.values()) == 0:
-    dummy_hidden_params[
-        list(dummy_hidden_params.keys())[random.randrange(len(dummy_hidden_params))]
-    ] = True
+    dummy_hidden_params[true_param_idx] = True
 
 dummy_no_hidden_params = {}
 for name in dummy_param_names:
     dummy_no_hidden_params["sample_" + name] = False
+
+dummy_hidden_params_true_false = dummy_hidden_params
+while True:
+    false_param_idx = list(dummy_hidden_params.keys())[
+        random.randrange(len(dummy_hidden_params))
+    ]
+    if false_param_idx != true_param_idx:
+        break
+if sum(dummy_hidden_params_true_false.values()) == 0:
+    dummy_hidden_params_true_false[false_param_idx] = False
 
 dummy_ode_simulation_settings = {
     "dt0": random.uniform(0, 10),
@@ -202,7 +213,7 @@ def test_simulation_model_init_bayesflow_prior(simulation_settings):
         dummy_sample_boundaries,
         dummy_default_values,
     )
-    assert isinstance(test_object.model_prior, Prior)
+    assert isinstance(test_object.prior, Prior)
 
 
 @pytest.mark.parametrize(
@@ -330,9 +341,13 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
             assert key[len("sample_") :] not in default_param_kwargs
 
 
-def test_simulation_model_print_internal_settings_method_ode(capsys):
+@pytest.mark.parametrize(
+    "hidden_params",
+    [dummy_hidden_params, dummy_hidden_params_true_false],
+)
+def test_simulation_model_print_internal_settings_method_ode(hidden_params, capsys):
     test_object = get_concrete_class(SimulationModel)(
-        dummy_hidden_params,
+        hidden_params,
         dummy_ode_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
@@ -358,7 +373,7 @@ def test_simulation_model_print_internal_settings_method_ode(capsys):
         + "parameter values:\n"
     )
 
-    for key, value in dummy_hidden_params.items():
+    for key, value in hidden_params.items():
         if value:
             expected_output += "{}: {} -> boundary\n".format(
                 key[len("sample_") :], dummy_sample_boundaries[key[len("sample_") :]]
@@ -374,9 +389,13 @@ def test_simulation_model_print_internal_settings_method_ode(capsys):
     assert err == ""
 
 
-def test_simulation_model_print_internal_settings_method_pde(capsys):
+@pytest.mark.parametrize(
+    "hidden_params",
+    [dummy_hidden_params, dummy_hidden_params_true_false],
+)
+def test_simulation_model_print_internal_settings_method_pde(hidden_params, capsys):
     test_object = get_concrete_class(SimulationModel)(
-        dummy_hidden_params,
+        hidden_params,
         dummy_pde_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
@@ -409,7 +428,7 @@ def test_simulation_model_print_internal_settings_method_pde(capsys):
         + "parameter values:\n"
     )
 
-    for key, value in dummy_hidden_params.items():
+    for key, value in hidden_params.items():
         if value:
             expected_output += "{}: {} -> boundary\n".format(
                 key[len("sample_") :], dummy_sample_boundaries[key[len("sample_") :]]
@@ -524,10 +543,59 @@ def test_simulation_model_get_bayesflow_amortizer_ode():
     setattr(test_object, "solver", dummy_solver)
 
     prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
-
+    batch_size = random.randint(1, 8)
+    data_dict = generative_model(batch_size=batch_size)
+    prior_samples = data_dict["prior_draws"]
+    sim_data = data_dict["sim_data"]
     assert isinstance(prior, Prior)
     assert isinstance(simulator, Simulator)
     assert isinstance(generative_model, GenerativeModel)
+    assert len(prior_samples.shape) == 2
+    assert prior_samples.shape[0] == batch_size
+    assert prior_samples.shape[1] == sum(dummy_hidden_params.values())
+    assert len(sim_data.shape) == 3
+    assert sim_data.shape[0] == batch_size
+    assert sim_data.shape[1] == dummy_ode_simulation_settings["max_time_iter"]
+    assert sim_data.shape[2] == 2
+
+
+def test_simulation_model_get_bayesflow_amortizer_pde():
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        dummy_pde_simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+    )
+
+    def dummy_solver(params):
+        return np.random.uniform(
+            -1000,
+            1000,
+            size=(
+                dummy_pde_simulation_settings["max_time_iter"],
+                dummy_pde_simulation_settings["nr"],
+                2,
+            ),
+        )
+
+    setattr(test_object, "solver", dummy_solver)
+
+    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+    batch_size = random.randint(1, 8)
+    data_dict = generative_model(batch_size=batch_size)
+    prior_samples = data_dict["prior_draws"]
+    sim_data = data_dict["sim_data"]
+    assert isinstance(prior, Prior)
+    assert isinstance(simulator, Simulator)
+    assert isinstance(generative_model, GenerativeModel)
+    assert len(prior_samples.shape) == 2
+    assert prior_samples.shape[0] == batch_size
+    assert prior_samples.shape[1] == sum(dummy_hidden_params.values())
+    assert len(sim_data.shape) == 4
+    assert sim_data.shape[0] == batch_size
+    assert sim_data.shape[1] == dummy_pde_simulation_settings["max_time_iter"]
+    assert sim_data.shape[2] == dummy_pde_simulation_settings["nr"]
+    assert sim_data.shape[3] == 2
 
 
 @pytest.mark.parametrize(
@@ -544,7 +612,7 @@ def test_simulation_model_get_prior_mean_std(simulation_settings):
 
     setattr(
         test_object,
-        "model_prior",
+        "prior",
         Prior(
             prior_fun=test_object.uniform_prior,
             param_names=test_object.get_param_names(),

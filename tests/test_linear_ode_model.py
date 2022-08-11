@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 import pytest
+from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 
 from ML_for_Battery_Design.src.settings.simulation.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SETTINGS,
@@ -60,6 +61,11 @@ def test_linear_ode_system_init(capsys):
                     key[len("sample_") :]
                 ],
             )
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+    prior_samples = data_dict["prior_draws"]
+    sim_data = data_dict["sim_data"]
+    prior_means, prior_stds = test_object.get_prior_means_stds()
     assert test_object.hidden_params == LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]
     assert (
         test_object.simulation_settings
@@ -89,6 +95,33 @@ def test_linear_ode_system_init(capsys):
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
     assert test_object.num_features == 4
     assert test_object.plot_settings == LINEAR_ODE_SYSTEM_SETTINGS["plot_settings"]
+    assert isinstance(test_object.prior, Prior)
+    assert isinstance(test_object.simulator, Simulator)
+    assert isinstance(test_object.generative_model, GenerativeModel)
+    assert len(prior_samples.shape) == 2
+    assert prior_samples.shape[0] == batch_size
+    assert prior_samples.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    assert len(sim_data.shape) == 3
+    assert sim_data.shape[0] == batch_size
+    assert (
+        sim_data.shape[1]
+        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
+    )
+    assert isinstance(prior_means, np.ndarray)
+    assert isinstance(prior_stds, np.ndarray)
+    assert len(prior_means.shape) == 2
+    assert prior_means.shape[0] == 1
+    assert prior_means.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    assert len(prior_stds.shape) == 2
+    assert prior_stds.shape[0] == 1
+    assert prior_stds.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    assert sim_data.shape[2] == test_object.num_features
     assert out == expected_output
     assert err == ""
 
@@ -191,11 +224,8 @@ def test_linear_ode_system_print_internal_settings_method(capsys):
 
 
 def test_linear_ode_system_sample_to_kwargs_method():
-    dummy_sample = np.array(
-        [
-            random.uniform(-1000, 1000)
-            for x in range(sum(LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()))
-        ]
+    dummy_sample = np.random.uniform(
+        -1000, 1000, size=sum(LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values())
     ).astype(np.float32)
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
     param_kwargs = test_object.sample_to_kwargs(dummy_sample)
@@ -246,6 +276,48 @@ def test_linear_ode_system_uniform_prior_method():
             counter += 1
 
 
+def test_linear_ode_system_get_bayesflow_amortizer():
+    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+    batch_size = random.randint(1, 8)
+    data_dict = generative_model(batch_size=batch_size)
+    prior_samples = data_dict["prior_draws"]
+    sim_data = data_dict["sim_data"]
+    assert isinstance(prior, Prior)
+    assert isinstance(simulator, Simulator)
+    assert isinstance(generative_model, GenerativeModel)
+    assert len(prior_samples.shape) == 2
+    assert prior_samples.shape[0] == batch_size
+    assert prior_samples.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    assert len(sim_data.shape) == 3
+    assert sim_data.shape[0] == batch_size
+    assert (
+        sim_data.shape[1]
+        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
+    )
+    assert sim_data.shape[2] == 4
+
+
+def test_linear_ode_system_get_prior_means_stds():
+    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+    prior_means, prior_stds = test_object.get_prior_means_stds()
+
+    assert isinstance(prior_means, np.ndarray)
+    assert isinstance(prior_stds, np.ndarray)
+    assert len(prior_means.shape) == 2
+    assert prior_means.shape[0] == 1
+    assert prior_means.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+    assert len(prior_stds.shape) == 2
+    assert prior_stds.shape[0] == 1
+    assert prior_stds.shape[1] == sum(
+        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
+    )
+
+
 # --------------------- Test implemented abstract methods -------------------- #
 
 
@@ -264,12 +336,7 @@ def test_linear_ode_system_get_sim_data_sim_method():
 @pytest.mark.parametrize("dummy_matrix", dummy_matrices)
 def test_linear_ode_system_reject_sampler_method(dummy_matrix):
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
-    sample = np.concatenate(
-        (
-            dummy_matrix[0],
-            np.array([random.uniform(-1000, 1000), random.uniform(-1000, 1000)]),
-        )
-    )
+    sample = np.concatenate((dummy_matrix[0], np.random.uniform(-1000, 1000, size=2)))
     reject = test_object.reject_sampler(sample)
     assert reject == dummy_matrix[1]
 

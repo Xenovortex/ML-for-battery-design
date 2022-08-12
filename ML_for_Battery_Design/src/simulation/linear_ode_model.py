@@ -1,5 +1,5 @@
 import os
-from typing import Tuple, Type
+from typing import Tuple, Type, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -128,7 +128,10 @@ class LinearODEsystem(SimulationModel):
     def plot_sim_data(
         self, filename: str = None
     ) -> Tuple[
-        Type[Figure], Type[Axes], npt.NDArray[np.float32], npt.NDArray[np.float32]
+        Type[Figure],
+        Union[Type[Axes], Type[np.flatiter]],
+        npt.NDArray[np.float32],
+        npt.NDArray[np.float32],
     ]:
         """Generate simulation data plots
 

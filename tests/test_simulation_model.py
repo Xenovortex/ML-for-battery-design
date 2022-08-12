@@ -42,12 +42,14 @@ if sum(dummy_hidden_params_true_false.values()) == 0:
 dummy_ode_simulation_settings = {
     "dt0": random.uniform(0, 10),
     "max_time_iter": random.randrange(1000),
+    "use_reject_sampling": random.choice([True, False]),
 }
 
 dummy_pde_simulation_settings = {
     "dt0": random.uniform(0, 10),
     "max_time_iter": random.randrange(1000),
     "nr": random.randrange(1000),
+    "use_reject_sampling": random.choice([True, False]),
 }
 
 dummy_sample_boundaries = {}
@@ -160,9 +162,14 @@ def test_simulation_model_init_ode():
     )
     assert isinstance(test_object.dt0, float)
     assert isinstance(test_object.max_time_iter, int)
+    assert isinstance(test_object.reject_sampling, bool)
     assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_ode_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_ode_simulation_settings["max_time_iter"]
+    assert (
+        test_object.reject_sampling
+        == dummy_ode_simulation_settings["use_reject_sampling"]
+    )
     assert not test_object.is_pde
 
 
@@ -176,10 +183,15 @@ def test_simulation_model_init_pde():
     assert isinstance(test_object.dt0, float)
     assert isinstance(test_object.max_time_iter, int)
     assert isinstance(test_object.nr, int)
+    assert isinstance(test_object.reject_sampling, bool)
     assert isinstance(test_object.is_pde, bool)
     assert test_object.dt0 == dummy_pde_simulation_settings["dt0"]
     assert test_object.max_time_iter == dummy_pde_simulation_settings["max_time_iter"]
     assert test_object.nr == dummy_pde_simulation_settings["nr"]
+    assert (
+        test_object.reject_sampling
+        == dummy_pde_simulation_settings["use_reject_sampling"]
+    )
     assert test_object.is_pde
 
 
@@ -501,16 +513,20 @@ def test_simulation_model_reject_sampler(simulation_settings):
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
-def test_simulation_model_uniform_prior_method(simulation_settings):
+@pytest.mark.parametrize("use_reject_sampling", [True, False])
+def test_simulation_model_uniform_prior_method(
+    simulation_settings, use_reject_sampling
+):
+    temp_simulation_settings = simulation_settings
+    simulation_settings["use_reject_sampling"] = use_reject_sampling
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
-        simulation_settings,
+        temp_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
     )
 
-    sample = test_object.uniform_prior(reject_sampling=False)
-    sample_reject = test_object.uniform_prior(reject_sampling=True)
+    sample = test_object.uniform_prior()
 
     assert isinstance(sample, np.ndarray)
     assert sample.dtype == np.float32
@@ -521,17 +537,6 @@ def test_simulation_model_uniform_prior_method(simulation_settings):
         if dummy_hidden_params["sample_" + name]:
             assert sample[counter] >= lower_boundary
             assert sample[counter] <= upper_boundary
-            counter += 1
-
-    assert isinstance(sample_reject, np.ndarray)
-    assert sample_reject.dtype == np.float32
-    assert len(sample_reject.shape) == 1
-    assert sample_reject.shape[0] == sum(dummy_hidden_params.values())
-    counter = 0
-    for name, (lower_boundary, upper_boundary) in dummy_sample_boundaries.items():
-        if dummy_hidden_params["sample_" + name]:
-            assert sample_reject[counter] >= lower_boundary
-            assert sample_reject[counter] <= upper_boundary
             counter += 1
 
 

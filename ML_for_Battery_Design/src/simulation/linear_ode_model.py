@@ -24,6 +24,7 @@ class LinearODEsystem(SimulationModel):
         dt0 (float): time step size for discretization in time direction
         max_time_iter (int): number of iterations after which the simulation stops
         nr (int): number of discretization points in space dimension (only for PDE)
+        reject_sampling (bool): If True, rejection sampling will be performed
         is_pde (bool): if the simulation model is described by PDEs or ODEs
         t (npt.NDArray[Any]): time points at which the solutions should be evaluated
         hidden_param_names (list): list of hidden parameter names

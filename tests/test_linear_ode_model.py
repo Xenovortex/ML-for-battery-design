@@ -87,6 +87,11 @@ def test_linear_ode_system_init(capsys):
         test_object.max_time_iter
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
+    assert isinstance(test_object.reject_sampling, bool)
+    assert (
+        test_object.reject_sampling
+        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["use_reject_sampling"]
+    )
     assert isinstance(test_object.is_pde, bool)
     assert not test_object.is_pde
     assert isinstance(test_object.t, np.ndarray)
@@ -246,8 +251,7 @@ def test_linear_ode_system_sample_to_kwargs_method():
 
 def test_linear_ode_system_uniform_prior_method():
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
-    sample = test_object.uniform_prior(reject_sampling=False)
-    sample_reject = test_object.uniform_prior(reject_sampling=True)
+    sample = test_object.uniform_prior()
 
     assert isinstance(sample, np.ndarray)
     assert sample.dtype == np.float32
@@ -260,21 +264,6 @@ def test_linear_ode_system_uniform_prior_method():
         if LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]["sample_" + name]:
             assert sample[counter] >= lower_boundary
             assert sample[counter] <= upper_boundary
-            counter += 1
-
-    assert isinstance(sample_reject, np.ndarray)
-    assert sample_reject.dtype == np.float32
-    assert len(sample_reject.shape) == 1
-    assert sample_reject.shape[0] == sum(
-        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
-    )
-    counter = 0
-    for name, (lower_boundary, upper_boundary) in LINEAR_ODE_SYSTEM_SETTINGS[
-        "sample_boundaries"
-    ].items():
-        if LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]["sample_" + name]:
-            assert sample_reject[counter] >= lower_boundary
-            assert sample_reject[counter] <= upper_boundary
             counter += 1
 
 

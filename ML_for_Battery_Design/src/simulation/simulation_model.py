@@ -17,6 +17,7 @@ class SimulationModel(ABC):
         dt0 (float): time step size for discretization in time direction
         max_time_iter (int): number of iterations after which the simulation stops
         nr (int): number of discretization points in space dimension (only for PDE)
+        reject_sampling (bool): If True, rejection sampling will be performed
         is_pde (bool): if the simulation model is described by PDEs or ODEs
         t (npt.NDArray[Any]): time points at which the solutions should be evaluated
         hidden_param_names (list): list of hidden parameter names
@@ -75,6 +76,7 @@ class SimulationModel(ABC):
         # unpack simulation parameters
         self.dt0 = self.simulation_settings["dt0"]
         self.max_time_iter = self.simulation_settings["max_time_iter"]
+        self.reject_sampling = self.simulation_settings["use_reject_sampling"]
         if "nr" in simulation_settings:
             self.nr = self.simulation_settings["nr"]
             self.is_pde = True
@@ -207,11 +209,8 @@ class SimulationModel(ABC):
         """
         return False
 
-    def uniform_prior(self, reject_sampling: bool = False) -> npt.NDArray[np.float32]:
+    def uniform_prior(self) -> npt.NDArray[np.float32]:
         """Generate samples from uniform prior
-
-        Args:
-            reject_sampling (bool, optional): If True, rejection sampling will be performed. Defaults to False.
 
         Returns:
             sample (npt.NDArray[np.float32]): uniform prior sample
@@ -223,7 +222,7 @@ class SimulationModel(ABC):
             lower_boundary.append(self.sample_boundaries[param_name][0])
             upper_boundary.append(self.sample_boundaries[param_name][1])
 
-        if reject_sampling:
+        if self.reject_sampling:
             while True:
                 sample = np.random.uniform(
                     low=lower_boundary,

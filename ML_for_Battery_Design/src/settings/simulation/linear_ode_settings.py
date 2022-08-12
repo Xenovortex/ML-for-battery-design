@@ -7,10 +7,7 @@ HIDDEN_PARAMS = {
     "sample_v0": True,
 }
 
-SIMULATION_SETTINGS = {
-    "dt0": 0.1,
-    "max_time_iter": 30,
-}
+SIMULATION_SETTINGS = {"dt0": 0.1, "max_time_iter": 30, "use_reject_sampling": True}
 
 SAMPLE_BOUNDARIES = {
     "a": (-10, 10),

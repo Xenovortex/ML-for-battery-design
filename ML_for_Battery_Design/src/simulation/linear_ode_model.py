@@ -1,3 +1,4 @@
+import os
 from typing import Tuple, Type
 
 import matplotlib.pyplot as plt
@@ -247,7 +248,7 @@ class LinearODEsystem(SimulationModel):
                             horizontalalignment="left",
                             verticalalignment="center",
                             transform=ax[i].transAxes,
-                            size=10,
+                            size=8,
                         )
                 if self.plot_settings["show_eigen"]:
                     param_kwargs = self.sample_to_kwargs(param)
@@ -261,54 +262,48 @@ class LinearODEsystem(SimulationModel):
                     ax[i].text(
                         0.1,
                         0.7 + 0.2,
-                        "Eigenvalue 1={:.3f}".format(eigenvalues[0]),
+                        "Eigenvalue 1={:.2f}".format(eigenvalues[0]),
                         horizontalalignment="left",
                         verticalalignment="center",
                         transform=ax[i].transAxes,
-                        size=10,
+                        size=8,
                     )
                     ax[i].text(
                         0.1,
                         0.7 + 0.15,
-                        "Eigenvalue 2={:.3f}".format(eigenvalues[1]),
+                        "Eigenvalue 2={:.2f}".format(eigenvalues[1]),
                         horizontalalignment="left",
                         verticalalignment="center",
                         transform=ax[i].transAxes,
-                        size=10,
+                        size=8,
                     )
                     ax[i].text(
                         0.1,
                         0.7 + 0.1,
-                        "Eigenvector 1=({:.3f}, {:.3f})".format(
+                        "Eigenvector 1=({:.2f}, {:.2f})".format(
                             eigenvectors[0, 0], eigenvectors[1, 0]
                         ),
                         horizontalalignment="left",
                         verticalalignment="center",
                         transform=ax[i].transAxes,
-                        size=10,
+                        size=8,
                     )
                     ax[i].text(
                         0.1,
                         0.7 + 0.05,
-                        "Eigenvector 2=({:.3f}, {:.3f})".format(
+                        "Eigenvector 2=({:.2f}, {:.2f})".format(
                             eigenvectors[0, 1], eigenvectors[1, 1]
                         ),
                         horizontalalignment="left",
                         verticalalignment="center",
                         transform=ax[i].transAxes,
-                        size=10,
+                        size=8,
                     )
                 ax[i].set_xlabel("Time t[s]")
                 ax[i].set_ylabel("Function u(t)/v(t)")
                 ax[i].grid(True)
                 handles, labels = ax[i].get_legend_handles_labels()
             fig.legend(handles, labels)
-        else:
-            raise ValueError(
-                "{} - plot_sim_data: num_plots in plot_settings is {}, but has to be positive".format(
-                    self.__class__.__name__, self.plot_settings["num_plots"]
-                )
-            )
 
         if self.plot_settings["show_title"]:
             fig.suptitle("Linear ODE system simulation data examples")
@@ -316,8 +311,14 @@ class LinearODEsystem(SimulationModel):
         plt.tight_layout()
 
         if filename is not None:
+            save_path = os.path.join(
+                "results", filename, "plots", filename + "-sim_data.png"
+            )
+            if not os.path.exists(os.path.dirname(save_path)):
+                os.makedirs(os.path.dirname(save_path))
+
             fig.savefig(
-                filename + "-sim_data.png",
+                save_path,
                 transparent=True,
                 bbox_inches="tight",
                 pad_inches=0,

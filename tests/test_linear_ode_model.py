@@ -1,3 +1,4 @@
+import os
 import random
 
 import numpy as np
@@ -355,8 +356,12 @@ def test_linear_ode_system_solver_method():
 def test_linear_ode_system_plot_sim_data_one_plot():
     init_data = LINEAR_ODE_SYSTEM_SETTINGS
     init_data["plot_settings"]["num_plots"] = 1
+    init_data["plot_settings"]["show_title"] = True
+    init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_params"] = True
+    init_data["plot_settings"]["show_eigen"] = True
     test_object = LinearODEsystem(**init_data)
-    fig, ax, params, sim_data = test_object.plot_sim_data()
+    fig, ax, params, sim_data = test_object.plot_sim_data(filename="pytest")
     assert isinstance(fig, Figure)
     assert isinstance(ax, Axes)
     assert isinstance(params, np.ndarray)
@@ -372,13 +377,24 @@ def test_linear_ode_system_plot_sim_data_one_plot():
         x_plot, y_plot = ax.lines[i].get_xydata().T
         assert np.array_equal(x_plot, test_object.t)
         assert np.array_equal(y_plot, sim_data[0, :, i])
+    assert os.path.exists("results/pytest/plots/pytest-sim_data.png")
+    if os.path.exists("results/pytest/plots/pytest-sim_data.png"):
+        os.remove("results/pytest/plots/pytest-sim_data.png")
+    if os.path.exists("results/pytest/plots"):
+        os.rmdir("results/pytest/plots")
+    if os.path.exists("results/pytest"):
+        os.rmdir("results/pytest")
 
 
 def test_linear_ode_system_plot_sim_data_multiple_row_plots():
     init_data = LINEAR_ODE_SYSTEM_SETTINGS
     init_data["plot_settings"]["num_plots"] = 8
+    init_data["plot_settings"]["show_title"] = True
+    init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_params"] = True
+    init_data["plot_settings"]["show_eigen"] = True
     test_object = LinearODEsystem(**init_data)
-    fig, ax, params, sim_data = test_object.plot_sim_data()
+    fig, ax, params, sim_data = test_object.plot_sim_data(filename="pytest")
     assert isinstance(fig, Figure)
     assert isinstance(ax, np.flatiter)
     assert isinstance(params, np.ndarray)
@@ -395,3 +411,10 @@ def test_linear_ode_system_plot_sim_data_multiple_row_plots():
             x_plot, y_plot = ax[k].lines[i].get_xydata().T
             assert np.array_equal(x_plot, test_object.t)
             assert np.array_equal(y_plot, sim_data[k, :, i])
+    assert os.path.exists("results/pytest/plots/pytest-sim_data.png")
+    if os.path.exists("results/pytest/plots/pytest-sim_data.png"):
+        os.remove("results/pytest/plots/pytest-sim_data.png")
+    if os.path.exists("results/pytest/plots"):
+        os.rmdir("results/pytest/plots")
+    if os.path.exists("results/pytest"):
+        os.rmdir("results/pytest")

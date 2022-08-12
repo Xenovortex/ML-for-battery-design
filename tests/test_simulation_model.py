@@ -214,6 +214,14 @@ def test_simulation_model_init_bayesflow_prior(simulation_settings):
         dummy_default_values,
     )
     assert isinstance(test_object.prior, Prior)
+    assert isinstance(test_object.prior_means, np.ndarray)
+    assert isinstance(test_object.prior_stds, np.ndarray)
+    assert len(test_object.prior_means.shape) == 2
+    assert test_object.prior_means.shape[0] == 1
+    assert test_object.prior_means.shape[1] == sum(dummy_hidden_params.values())
+    assert len(test_object.prior_stds.shape) == 2
+    assert test_object.prior_stds.shape[0] == 1
+    assert test_object.prior_stds.shape[1] == sum(dummy_hidden_params.values())
 
 
 @pytest.mark.parametrize(

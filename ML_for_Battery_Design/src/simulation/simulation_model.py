@@ -21,7 +21,9 @@ class SimulationModel(ABC):
         t (npt.NDArray[Any]): time points at which the solutions should be evaluated
         hidden_param_names (list): list of hidden parameter names
         default_param_kwargs (dict): not-sampled parameters default values as keyword arguments
-        model_prior (bayesflow.Prior): prior sample generator wrapped in bayesflow Prior object
+        prior (bayesflow.Prior): prior sample generator wrapped in bayesflow Prior object
+        prior_means (npt.NDArray[Any]): estimated mean of joint prior
+        prior_stds (npt.NDArray[Any]): estimated standard deviation of joint prior
     """
 
     def __init__(
@@ -88,6 +90,7 @@ class SimulationModel(ABC):
         self.prior = Prior(
             prior_fun=self.uniform_prior, param_names=self.hidden_param_names
         )
+        self.prior_means, self.prior_stds = self.get_prior_means_stds()
 
         # warning, if no hidden parameters
         if len(self.hidden_param_names) == 0:

@@ -68,7 +68,6 @@ def test_linear_ode_system_init(capsys):
     data_dict = test_object.generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]
     sim_data = data_dict["sim_data"]
-    prior_means, prior_stds = test_object.get_prior_means_stds()
     assert test_object.hidden_params == LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]
     assert (
         test_object.simulation_settings
@@ -112,16 +111,16 @@ def test_linear_ode_system_init(capsys):
         sim_data.shape[1]
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
-    assert isinstance(prior_means, np.ndarray)
-    assert isinstance(prior_stds, np.ndarray)
-    assert len(prior_means.shape) == 2
-    assert prior_means.shape[0] == 1
-    assert prior_means.shape[1] == sum(
+    assert isinstance(test_object.prior_means, np.ndarray)
+    assert isinstance(test_object.prior_stds, np.ndarray)
+    assert len(test_object.prior_means.shape) == 2
+    assert test_object.prior_means.shape[0] == 1
+    assert test_object.prior_means.shape[1] == sum(
         LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
     )
-    assert len(prior_stds.shape) == 2
-    assert prior_stds.shape[0] == 1
-    assert prior_stds.shape[1] == sum(
+    assert len(test_object.prior_stds.shape) == 2
+    assert test_object.prior_stds.shape[0] == 1
+    assert test_object.prior_stds.shape[1] == sum(
         LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
     )
     assert sim_data.shape[2] == test_object.num_features

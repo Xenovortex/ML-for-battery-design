@@ -17,7 +17,23 @@ class LinearODEsystem(SimulationModel):
         dv_dt = c * u + d * v
 
     Attributes:
-        # TODO
+        hidden_params (dict): boolean values for if each hidden parameter should be sampled or stay constant
+        simulation_settings (dict): settings for generating simulation data
+        sample_boundaries (dict): sampling boundaries for each hidden parameter
+        default_param_values (dict): default values of hidden parameters, if not sampled
+        dt0 (float): time step size for discretization in time direction
+        max_time_iter (int): number of iterations after which the simulation stops
+        nr (int): number of discretization points in space dimension (only for PDE)
+        is_pde (bool): if the simulation model is described by PDEs or ODEs
+        t (npt.NDArray[Any]): time points at which the solutions should be evaluated
+        hidden_param_names (list): list of hidden parameter names
+        default_param_kwargs (dict): not-sampled parameters default values as keyword arguments
+        num_features (int): number of features in simulation data per time point
+        prior (bayesflow.Prior): prior sample generator wrapped in bayesflow Prior object
+        simulator (bayesflow.Simulator): simulation data generator wrapped in bayesflow Simulator object
+        generative_model (bayesflow.GenerativeModel): generator for both prior samples and simulation data wrapped in bayesflow GenerativeModel object
+        prior_means (npt.NDArray[Any]): estimated mean of joint prior
+        prior_stds (npt.NDArray[Any]): estimated standard deviation of joint prior
     """
 
     def __init__(
@@ -47,7 +63,6 @@ class LinearODEsystem(SimulationModel):
             self.simulator,
             self.generative_model,
         ) = self.get_bayesflow_amortizer()
-        self.prior_means, self.prior_stds = self.get_prior_means_stds()
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:
@@ -159,7 +174,7 @@ class LinearODEsystem(SimulationModel):
                 for j, param_name in enumerate(self.hidden_param_names):
                     ax.text(
                         0.1,
-                        0.7 - 0.05 * j,
+                        0.7 - 0.025 * j,
                         "{}={:.3f}".format(param_name, params[0, j]),
                         horizontalalignment="left",
                         verticalalignment="center",
@@ -177,7 +192,7 @@ class LinearODEsystem(SimulationModel):
                 eigenvalues, eigenvectors = np.linalg.eig(A)
                 ax.text(
                     0.1,
-                    0.7 + 0.2,
+                    0.7 + 0.1,
                     "Eigenvalue 1={:.3f}".format(eigenvalues[0]),
                     horizontalalignment="left",
                     verticalalignment="center",
@@ -186,7 +201,7 @@ class LinearODEsystem(SimulationModel):
                 )
                 ax.text(
                     0.1,
-                    0.7 + 0.15,
+                    0.7 + 0.075,
                     "Eigenvalue 2={:.3f}".format(eigenvalues[1]),
                     horizontalalignment="left",
                     verticalalignment="center",
@@ -195,7 +210,7 @@ class LinearODEsystem(SimulationModel):
                 )
                 ax.text(
                     0.1,
-                    0.7 + 0.1,
+                    0.7 + 0.05,
                     "Eigenvector 1=({:.3f}, {:.3f})".format(
                         eigenvectors[0, 0], eigenvectors[1, 0]
                     ),
@@ -206,7 +221,7 @@ class LinearODEsystem(SimulationModel):
                 )
                 ax.text(
                     0.1,
-                    0.7 + 0.05,
+                    0.7 + 0.025,
                     "Eigenvector 2=({:.3f}, {:.3f})".format(
                         eigenvectors[0, 1], eigenvectors[1, 1]
                     ),

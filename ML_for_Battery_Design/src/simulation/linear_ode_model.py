@@ -1,6 +1,10 @@
+from typing import Tuple, Type
+
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 
@@ -104,11 +108,222 @@ class LinearODEsystem(SimulationModel):
         solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
         return solution.astype(np.float32)
 
-    def plot_sim_data(self, filename: str = None) -> None:
+    def plot_sim_data(
+        self, filename: str = None
+    ) -> Tuple[
+        Type[Figure], Type[Axes], npt.NDArray[np.float32], npt.NDArray[np.float32]
+    ]:
         """Generate simulation data plots
 
         Args:
             filename (str, optional): If given, save plot under results/filename/plots/filename-sim_data.png. Defaults to None.
+
+        Returns:
+            fig (plt.Figure) : matplotlib Figure instance for external access
+            ax (plt.Axes) : matplotlib Axes instance for external access
+            params (npt.NDArray[np.float32]): prior samples used to generate the plots
+            sim_data (npt.NDArray[np.float32]): simulation data used to generate the plots
         """
         plt.rcParams["font.size"] = self.plot_settings["font_size"]
-        # TODO
+
+        data_dict = self.generative_model(batch_size=self.plot_settings["num_plots"])
+        params = data_dict["prior_draws"]
+        sim_data = data_dict["sim_data"]
+
+        n_row = int(np.ceil(len(params) / 6))
+        n_col = int(np.ceil(len(params) / n_row))
+
+        fig, ax = plt.subplots(n_row, n_col, figsize=self.plot_settings["figsize"])
+        if n_row > 1:
+            ax = ax.flat
+
+        if self.plot_settings["num_plots"] == 1:
+            ax.plot(self.t, sim_data[0, :, 0], label="u(t) real part", c="orange")
+            ax.plot(self.t, sim_data[0, :, 1], label="v(t) real part", c="blue")
+            ax.plot(
+                self.t,
+                sim_data[0, :, 2],
+                label="u(t) complex part",
+                c="orange",
+                linestyle="--",
+            )
+            ax.plot(
+                self.t,
+                sim_data[0, :, 3],
+                label="v(t) complex part",
+                c="blue",
+                linestyle="--",
+            )
+            if self.plot_settings["show_params"]:
+                for j, param_name in enumerate(self.hidden_param_names):
+                    ax.text(
+                        0.1,
+                        0.7 - 0.05 * j,
+                        "{}={:.3f}".format(param_name, params[0, j]),
+                        horizontalalignment="left",
+                        verticalalignment="center",
+                        transform=ax.transAxes,
+                        size=10,
+                    )
+            if self.plot_settings["show_eigen"]:
+                param_kwargs = self.sample_to_kwargs(params[0])
+                A = np.array(
+                    [
+                        [param_kwargs["a"], param_kwargs["b"]],
+                        [param_kwargs["c"], param_kwargs["d"]],
+                    ]
+                )
+                eigenvalues, eigenvectors = np.linalg.eig(A)
+                ax.text(
+                    0.1,
+                    0.7 + 0.2,
+                    "Eigenvalue 1={:.3f}".format(eigenvalues[0]),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=10,
+                )
+                ax.text(
+                    0.1,
+                    0.7 + 0.15,
+                    "Eigenvalue 2={:.3f}".format(eigenvalues[1]),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=10,
+                )
+                ax.text(
+                    0.1,
+                    0.7 + 0.1,
+                    "Eigenvector 1=({:.3f}, {:.3f})".format(
+                        eigenvectors[0, 0], eigenvectors[1, 0]
+                    ),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=10,
+                )
+                ax.text(
+                    0.1,
+                    0.7 + 0.05,
+                    "Eigenvector 2=({:.3f}, {:.3f})".format(
+                        eigenvectors[0, 1], eigenvectors[1, 1]
+                    ),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=10,
+                )
+            ax.set_xlabel("Time t[s]")
+            ax.set_ylabel("Function u(t)/v(t)")
+            ax.grid(True)
+            ax.legend()
+        elif self.plot_settings["num_plots"] > 1:
+            for i, param in enumerate(params):
+                ax[i].plot(
+                    self.t, sim_data[i, :, 0], label="u(t) real part", c="orange"
+                )
+                ax[i].plot(self.t, sim_data[i, :, 1], label="v(t) real part", c="blue")
+                ax[i].plot(
+                    self.t,
+                    sim_data[i, :, 2],
+                    label="u(t) complex part",
+                    c="orange",
+                    linestyle="--",
+                )
+                ax[i].plot(
+                    self.t,
+                    sim_data[i, :, 3],
+                    label="v(t) complex part",
+                    c="blue",
+                    linestyle="--",
+                )
+                if self.plot_settings["show_params"]:
+                    for j, param_name in enumerate(self.hidden_param_names):
+                        ax[i].text(
+                            0.1,
+                            0.7 - 0.05 * j,
+                            "{}={:.3f}".format(param_name, param[j]),
+                            horizontalalignment="left",
+                            verticalalignment="center",
+                            transform=ax[i].transAxes,
+                            size=10,
+                        )
+                if self.plot_settings["show_eigen"]:
+                    param_kwargs = self.sample_to_kwargs(param)
+                    A = np.array(
+                        [
+                            [param_kwargs["a"], param_kwargs["b"]],
+                            [param_kwargs["c"], param_kwargs["d"]],
+                        ]
+                    )
+                    eigenvalues, eigenvectors = np.linalg.eig(A)
+                    ax[i].text(
+                        0.1,
+                        0.7 + 0.2,
+                        "Eigenvalue 1={:.3f}".format(eigenvalues[0]),
+                        horizontalalignment="left",
+                        verticalalignment="center",
+                        transform=ax[i].transAxes,
+                        size=10,
+                    )
+                    ax[i].text(
+                        0.1,
+                        0.7 + 0.15,
+                        "Eigenvalue 2={:.3f}".format(eigenvalues[1]),
+                        horizontalalignment="left",
+                        verticalalignment="center",
+                        transform=ax[i].transAxes,
+                        size=10,
+                    )
+                    ax[i].text(
+                        0.1,
+                        0.7 + 0.1,
+                        "Eigenvector 1=({:.3f}, {:.3f})".format(
+                            eigenvectors[0, 0], eigenvectors[1, 0]
+                        ),
+                        horizontalalignment="left",
+                        verticalalignment="center",
+                        transform=ax[i].transAxes,
+                        size=10,
+                    )
+                    ax[i].text(
+                        0.1,
+                        0.7 + 0.05,
+                        "Eigenvector 2=({:.3f}, {:.3f})".format(
+                            eigenvectors[0, 1], eigenvectors[1, 1]
+                        ),
+                        horizontalalignment="left",
+                        verticalalignment="center",
+                        transform=ax[i].transAxes,
+                        size=10,
+                    )
+                ax[i].set_xlabel("Time t[s]")
+                ax[i].set_ylabel("Function u(t)/v(t)")
+                ax[i].grid(True)
+                handles, labels = ax[i].get_legend_handles_labels()
+            fig.legend(handles, labels)
+        else:
+            raise ValueError(
+                "{} - plot_sim_data: num_plots in plot_settings is {}, but has to be positive".format(
+                    self.__class__.__name__, self.plot_settings["num_plots"]
+                )
+            )
+
+        if self.plot_settings["show_title"]:
+            fig.suptitle("Linear ODE system simulation data examples")
+
+        plt.tight_layout()
+
+        if filename is not None:
+            fig.savefig(
+                filename + "-sim_data.png",
+                transparent=True,
+                bbox_inches="tight",
+                pad_inches=0,
+            )
+
+        if self.plot_settings["show_plot"]:
+            plt.show()
+
+        return fig, ax, params, sim_data

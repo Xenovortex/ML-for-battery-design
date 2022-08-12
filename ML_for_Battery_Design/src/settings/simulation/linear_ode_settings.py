@@ -28,7 +28,9 @@ PLOT_SETTINGS = {
     "figsize": (15, 10),
     "font_size": 12,
     "show_title": True,
-    "show": False,
+    "show_plot": False,
+    "show_params": True,
+    "show_eigen": True,
 }
 
 LINEAR_ODE_SYSTEM_SETTINGS = {

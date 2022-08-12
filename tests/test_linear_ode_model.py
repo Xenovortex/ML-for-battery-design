@@ -3,6 +3,8 @@ import random
 import numpy as np
 import pytest
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from ML_for_Battery_Design.src.settings.simulation.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SETTINGS,
@@ -348,3 +350,48 @@ def test_linear_ode_system_solver_method():
     assert isinstance(solution, np.ndarray)
     assert solution.dtype == np.float32
     assert solution.shape == test_object.get_sim_data_dim()
+
+
+def test_linear_ode_system_plot_sim_data_one_plot():
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["plot_settings"]["num_plots"] = 1
+    test_object = LinearODEsystem(**init_data)
+    fig, ax, params, sim_data = test_object.plot_sim_data()
+    assert isinstance(fig, Figure)
+    assert isinstance(ax, Axes)
+    assert isinstance(params, np.ndarray)
+    assert isinstance(sim_data, np.ndarray)
+    assert len(params.shape) == 2
+    assert params.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert params.shape[1] == sum(init_data["hidden_params"].values())
+    assert len(sim_data.shape) == 3
+    assert sim_data.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert sim_data.shape[1] == init_data["simulation_settings"]["max_time_iter"]
+    assert sim_data.shape[2] == test_object.num_features
+    for i in range(test_object.num_features):
+        x_plot, y_plot = ax.lines[i].get_xydata().T
+        assert np.array_equal(x_plot, test_object.t)
+        assert np.array_equal(y_plot, sim_data[0, :, i])
+
+
+def test_linear_ode_system_plot_sim_data_multiple_row_plots():
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["plot_settings"]["num_plots"] = 8
+    test_object = LinearODEsystem(**init_data)
+    fig, ax, params, sim_data = test_object.plot_sim_data()
+    assert isinstance(fig, Figure)
+    assert isinstance(ax, np.flatiter)
+    assert isinstance(params, np.ndarray)
+    assert isinstance(sim_data, np.ndarray)
+    assert len(params.shape) == 2
+    assert params.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert params.shape[1] == sum(init_data["hidden_params"].values())
+    assert len(sim_data.shape) == 3
+    assert sim_data.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert sim_data.shape[1] == init_data["simulation_settings"]["max_time_iter"]
+    assert sim_data.shape[2] == test_object.num_features
+    for k in range(init_data["plot_settings"]["num_plots"]):
+        for i in range(test_object.num_features):
+            x_plot, y_plot = ax[k].lines[i].get_xydata().T
+            assert np.array_equal(x_plot, test_object.t)
+            assert np.array_equal(y_plot, sim_data[k, :, i])

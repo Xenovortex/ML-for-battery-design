@@ -602,7 +602,7 @@ def test_simulation_model_get_bayesflow_amortizer_pde():
     "simulation_settings",
     [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
 )
-def test_simulation_model_get_prior_mean_std(simulation_settings):
+def test_simulation_model_get_prior_means_stds(simulation_settings):
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         simulation_settings,

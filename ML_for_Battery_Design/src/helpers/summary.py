@@ -2,6 +2,7 @@ from typing import Type
 
 import tensorflow as tf
 from bayesflow.default_settings import MetaDictSetting
+from keras import Sequential
 from tensorflow.keras.layers import (
     LSTM,
     Conv2D,
@@ -10,10 +11,9 @@ from tensorflow.keras.layers import (
     GlobalAveragePooling2D,
     MaxPool2D,
 )
-from tensorflow.keras.models import Sequential
 
 
-class FC_network(tf.keras.Model):
+class FC_Network(tf.keras.Model):
     """Implements a fully-connected network with keras.
 
     Attributes:
@@ -26,13 +26,13 @@ class FC_network(tf.keras.Model):
         Args:
             meta (bayesflow.MetaDictSetting): contains settings to construct network architecture
         """
-        super(FC_network, self).__init__()
+        super(FC_Network, self).__init__()
 
-        self.FC = Sequential(
-            [Flatten()]
-            + [Dense(unit, activation=meta["activation"]) for unit in meta["units"]]
-            + [Dense(meta["summary_dim"], activation="sigmoid")]
-        )
+        self.FC = Sequential()
+        self.FC.add(Flatten())
+        for unit in meta["units"]:
+            self.FC.add(Dense(unit, activation=meta["activation"]))
+        self.FC.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -47,7 +47,7 @@ class FC_network(tf.keras.Model):
         return out
 
 
-class LSTM_network(tf.keras.Model):
+class LSTM_Network(tf.keras.Model):
     """Implements a long short-term memory network architecture
 
     Attributes:
@@ -60,7 +60,7 @@ class LSTM_network(tf.keras.Model):
         Args:
             meta (Type[MetaDictSetting]): contains settings to construct network architecture
         """
-        super(LSTM_network, self).__init__()
+        super(LSTM_Network, self).__init__()
 
         self.LSTM = Sequential(
             [LSTM(unit, return_sequences=True) for unit in meta["lstm_units"][:-1]]
@@ -85,7 +85,7 @@ class LSTM_network(tf.keras.Model):
         return out
 
 
-class CNN_network(tf.keras.Model):
+class CNN_Network(tf.keras.Model):
     """Implements a 2D convolutional neural network
 
     Attributes:
@@ -98,7 +98,7 @@ class CNN_network(tf.keras.Model):
         Args:
             meta (Type[MetaDictSetting]): contains settings to construct network architecture
         """
-        super(CNN_network, self).__init__()
+        super(CNN_Network, self).__init__()
 
         time_pool_size = 2 if meta["pool_time"] else 1
         space_pool_size = 2 if meta["pool_space"] else 1

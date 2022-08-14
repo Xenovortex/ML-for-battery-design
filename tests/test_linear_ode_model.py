@@ -329,6 +329,7 @@ def test_linear_ode_system_reject_sampler_method(dummy_matrix):
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
     sample = np.concatenate((dummy_matrix[0], np.random.uniform(-1000, 1000, size=2)))
     reject = test_object.reject_sampler(sample)
+    assert isinstance(reject, bool)
     assert reject == dummy_matrix[1]
 
 
@@ -339,6 +340,7 @@ def test_linear_ode_system_solver_method():
     assert isinstance(solution, np.ndarray)
     assert solution.dtype == np.float32
     assert solution.shape == test_object.get_sim_data_dim()
+    assert np.all(np.isfinite(solution))
 
 
 def test_linear_ode_system_plot_sim_data_one_plot():

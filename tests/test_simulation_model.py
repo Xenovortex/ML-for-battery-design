@@ -506,6 +506,7 @@ def test_simulation_model_reject_sampler(simulation_settings):
     dummy_sample = np.random.uniform(
         -1000, 1000, size=sum(dummy_hidden_params.values())
     ).astype(np.float32)
+    assert isinstance(test_object.reject_sampler(dummy_sample), bool)
     assert not test_object.reject_sampler(dummy_sample)
 
 

@@ -2,7 +2,7 @@ from typing import Type
 
 import tensorflow as tf
 from bayesflow.default_settings import MetaDictSetting
-from keras import Sequential
+from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
     LSTM,
     Conv2D,
@@ -62,15 +62,13 @@ class LSTM_Network(tf.keras.Model):
         """
         super(LSTM_Network, self).__init__()
 
-        self.LSTM = Sequential(
-            [LSTM(unit, return_sequences=True) for unit in meta["lstm_units"][:-1]]
-            + [LSTM(meta["lstm_units"][-1], return_sequences=False)]
-            + [
-                Dense(unit, activation=meta["fc_activation"])
-                for unit in meta["fc_units"]
-            ]
-            + [Dense(meta["summary_dim"], activation="sigmoid")]
-        )
+        self.LSTM = Sequential()
+        for unit in meta["lstm_units"][:-1]:
+            self.LSTM.add(LSTM(unit, return_sequences=True))
+        self.LSTM.add(LSTM(meta["lstm_units"][-1], return_sequences=False))
+        for unit in meta["fc_units"]:
+            self.LSTM.add(Dense(unit, activation=meta["fc_activation"]))
+        self.LSTM.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -103,37 +101,39 @@ class CNN_Network(tf.keras.Model):
         time_pool_size = 2 if meta["pool_time"] else 1
         space_pool_size = 2 if meta["pool_space"] else 1
 
-        CNN_base = []
+        self.CNN = Sequential()
         for num_filters, kernel_size, stride in zip(
             meta["num_filters"], meta["kernel_size"], meta["stride"]
         ):
-            CNN_base += [
+            self.CNN.add(
                 Conv2D(
                     num_filters,
                     kernel_size,
                     stride,
                     padding="same",
                     activation=meta["cnn_activation"],
-                ),
+                )
+            )
+            self.CNN.add(
                 Conv2D(
                     num_filters,
                     kernel_size,
                     stride,
                     padding="same",
                     activation=meta["cnn_activation"],
-                ),
+                )
+            )
+            self.CNN.add(
                 MaxPool2D(
                     pool_size=(time_pool_size, space_pool_size),
                     stride=(time_pool_size, space_pool_size),
                     padding="same",
-                ),
-            ]
-        self.CNN = Sequential(
-            CNN_base
-            + [GlobalAveragePooling2D()]
-            + [Dense(unit, activation=meta["fc_activation"]) for unit in meta["units"]]
-            + [Dense(meta["summary_dim"], activation="sigmoid")]
-        )
+                )
+            )
+        self.CNN.add(GlobalAveragePooling2D())
+        for unit in meta["units"]:
+            self.CNN.add(Dense(unit, activation=meta["fc_activation"]))
+        self.CNN.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model

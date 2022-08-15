@@ -64,11 +64,16 @@ class LSTM_Network(tf.keras.Model):
         super(LSTM_Network, self).__init__()
 
         self.LSTM = Sequential()
-        for unit in meta["lstm_units"][:-1]:
-            self.LSTM.add(LSTM(unit, return_sequences=True))
-        self.LSTM.add(LSTM(meta["lstm_units"][-1], return_sequences=False))
-        for unit in meta["fc_units"]:
-            self.LSTM.add(Dense(unit, activation=meta["fc_activation"]))
+        if meta["lstm_units"] is not None:
+            if len(meta["lstm_units"]) > 1:
+                for unit in meta["lstm_units"][:-1]:
+                    self.LSTM.add(LSTM(unit, return_sequences=True))
+            self.LSTM.add(LSTM(meta["lstm_units"][-1], return_sequences=False))
+        else:
+            self.LSTM.add(Flatten())
+        if meta["fc_units"] is not None:
+            for unit in meta["fc_units"]:
+                self.LSTM.add(Dense(unit, activation=meta["fc_activation"]))
         self.LSTM.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:

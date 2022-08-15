@@ -5,7 +5,7 @@ import tensorflow as tf
 from bayesflow.default_settings import MetaDictSetting
 from bayesflow.helper_functions import build_meta_dict
 from parameterized import parameterized
-from tensorflow.keras.activations import relu, sigmoid
+from tensorflow.keras.activations import relu, sigmoid, tanh
 from tensorflow.keras.layers import (
     LSTM,
     Conv2D,
@@ -29,10 +29,11 @@ class FCTest(tf.test.TestCase):
     @parameterized.expand([[0], [random.randint(1, 3)]])
     def test_ode_inference(self, num_layer):
         summary_dim = random.randint(1, 4)
-        if num_layer == 0:
-            units = None
-        else:
-            units = [random.randint(4, 16) for _ in range(num_layer)]
+        units = (
+            [random.randint(4, 16) for _ in range(num_layer)]
+            if (num_layer > 0)
+            else None
+        )
 
         architecture_settings = MetaDictSetting(
             meta_dict={
@@ -152,36 +153,66 @@ class FCTest(tf.test.TestCase):
 class LSTMTest(tf.test.TestCase):
     def setUp(self):
         super(LSTMTest, self).setUp()
-        self.summary_dim = random.randint(1, 4)
-        self.lstm_num_layer = random.randint(2, 3)
-        self.fc_num_layer = random.randint(1, 3)
-        self.fc_units = [random.randint(4, 16) for _ in range(self.fc_num_layer)]
-        self.lstm_units = [random.randint(4, 16) for _ in range(self.lstm_num_layer)]
+
+    @parameterized.expand(
+        [
+            [0, 0],
+            [0, random.randint(1, 3)],
+            [random.randint(1, 3), 0],
+            [random.randint(1, 3), random.randint(1, 3)],
+        ]
+    )
+    def test_ode_inference(self, lstm_num_layer, fc_num_layer):
+        summary_dim = random.randint(1, 4)
+        fc_units = (
+            [random.randint(4, 16) for _ in range(fc_num_layer)]
+            if (fc_num_layer > 0)
+            else None
+        )
+        lstm_units = (
+            [random.randint(4, 16) for _ in range(lstm_num_layer)]
+            if (lstm_num_layer > 0)
+            else None
+        )
         architecture_settings = MetaDictSetting(
             meta_dict={
-                "lstm_units": self.lstm_units,
-                "fc_units": self.fc_units,
+                "lstm_units": lstm_units,
+                "fc_units": fc_units,
                 "fc_activation": "relu",
-                "summary_dim": self.summary_dim,
+                "summary_dim": summary_dim,
             }
         )
-        self.model = LSTM_Network(build_meta_dict({}, architecture_settings))
+        model = LSTM_Network(build_meta_dict({}, architecture_settings))
 
-    def test_ode_inference(self):
         batch_size = random.randint(1, 8)
         max_time_iter = random.randint(1, 10)
         num_features = random.randint(1, 10)
         input_data = tf.random.uniform((batch_size, max_time_iter, num_features))
-        output = self.model(input_data)
-        expected_layer_types = (
-            self.lstm_num_layer * [LSTM] + self.fc_num_layer * [Dense] + [Dense]
-        )
-        expected_layer_output_shape = (
-            [(batch_size, max_time_iter, unit) for unit in self.lstm_units[:-1]]
-            + [(batch_size, self.lstm_units[-1])]
-            + [(batch_size, unit) for unit in self.fc_units]
-            + [(batch_size, self.summary_dim)]
-        )
+        output = model(input_data)
+        expected_layer_types = []
+        expected_activation = []
+        expected_layer_output_shape = []
+        if lstm_units is not None:
+            expected_layer_types += lstm_num_layer * [LSTM]
+            expected_activation += lstm_num_layer * [(tanh, sigmoid)]
+            if lstm_num_layer > 1:
+                expected_layer_output_shape += [
+                    (batch_size, max_time_iter, unit) for unit in lstm_units[:-1]
+                ]
+            expected_layer_output_shape += [(batch_size, lstm_units[-1])]
+            num_flatten_layer = 0
+        else:
+            expected_layer_types += [Flatten]
+            expected_activation += [None]
+            expected_layer_output_shape += [(batch_size, max_time_iter * num_features)]
+            num_flatten_layer = 1
+        if fc_units is not None:
+            expected_layer_types += fc_num_layer * [Dense]
+            expected_activation += fc_num_layer * [relu]
+            expected_layer_output_shape += [(batch_size, unit) for unit in fc_units]
+        expected_layer_types += [Dense]
+        expected_activation += [sigmoid]
+        expected_layer_output_shape += [(batch_size, summary_dim)]
 
         assert isinstance(input_data, tf.Tensor)
         self.assertEqual(input_data.dtype, tf.dtypes.float32)
@@ -193,14 +224,21 @@ class LSTMTest(tf.test.TestCase):
         self.assertEqual(output.dtype, tf.dtypes.float32)
         self.assertEqual(len(output.shape), 2)
         self.assertEqual(output.shape[0], batch_size)
-        self.assertEqual(output.shape[1], self.summary_dim)
+        self.assertEqual(output.shape[1], summary_dim)
         self.assertEqual(
-            len(self.model.LSTM.layers), self.lstm_num_layer + self.fc_num_layer + 1
+            len(model.LSTM.layers),
+            lstm_num_layer + fc_num_layer + num_flatten_layer + 1,
         )
-        for layer, layer_type, layer_out_shape in zip(
-            self.model.LSTM.layers, expected_layer_types, expected_layer_output_shape
+        for layer, layer_type, layer_act, layer_out_shape in zip(
+            model.LSTM.layers,
+            expected_layer_types,
+            expected_activation,
+            expected_layer_output_shape,
         ):
             assert isinstance(layer, layer_type)
+            if isinstance(layer, LSTM):
+                self.assertEqual(layer.activation, layer_act[0])
+                self.assertEqual(layer.recurrent_activation, layer_act[1])
             self.assertEqual(layer.output_shape, layer_out_shape)
 
 

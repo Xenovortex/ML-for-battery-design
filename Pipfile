@@ -25,6 +25,7 @@ mkdocstrings = {extras = ["python"], version = "*"}
 mkdocs-material = "*"
 mkgendocs = "*"
 pytest-subtests = "*"
+parameterized = "*"
 
 [scripts]
 main = "bash ./bin/main.sh"

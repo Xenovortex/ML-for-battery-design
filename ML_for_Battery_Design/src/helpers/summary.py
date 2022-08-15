@@ -30,8 +30,9 @@ class FC_Network(tf.keras.Model):
 
         self.FC = Sequential()
         self.FC.add(Flatten())
-        for unit in meta["units"]:
-            self.FC.add(Dense(unit, activation=meta["activation"]))
+        if meta["units"] is not None:
+            for unit in meta["units"]:
+                self.FC.add(Dense(unit, activation=meta["activation"]))
         self.FC.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
@@ -126,7 +127,7 @@ class CNN_Network(tf.keras.Model):
             self.CNN.add(
                 MaxPool2D(
                     pool_size=(time_pool_size, space_pool_size),
-                    stride=(time_pool_size, space_pool_size),
+                    strides=(time_pool_size, space_pool_size),
                     padding="same",
                 )
             )

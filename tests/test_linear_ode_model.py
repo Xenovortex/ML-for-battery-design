@@ -92,6 +92,8 @@ def test_linear_ode_system_init(use_complex, capsys):
     assert np.array_equal(test_object.t, test_object.get_time_points())
     assert isinstance(test_object.hidden_param_names, list)
     assert test_object.hidden_param_names == test_object.get_param_names()
+    assert isinstance(test_object.num_hidden_params, int)
+    assert test_object.num_hidden_params == sum(init_data["hidden_params"].values())
     assert isinstance(test_object.default_param_kwargs, dict)
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
     assert test_object.use_complex == use_complex

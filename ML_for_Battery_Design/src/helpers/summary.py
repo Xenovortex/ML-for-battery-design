@@ -186,3 +186,10 @@ class CNN_Network(tf.keras.Model):
 
         out = self.CNN(x)
         return out
+
+
+summary_collection = {
+    "FC": FC_Network,
+    "LSTM": LSTM_Network,
+    "CNN": CNN_Network,
+}

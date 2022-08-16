@@ -1,11 +1,3 @@
-from linear_ode_architectures import (
-    LINAER_ODE_SYSETEM_LSTM_ARCHITECTURE,
-    LINEAR_ODE_SYSTEM_INN_ARCHITECUTURE,
-)
+from linear_ode_architectures import LINEAR_ODE_SYSETEM_ARCHITECTURES
 
-architecture_settings = {
-    "linear_ode_system": {
-        "LSTM": LINAER_ODE_SYSETEM_LSTM_ARCHITECTURE,
-        "INN": LINEAR_ODE_SYSTEM_INN_ARCHITECUTURE,
-    }
-}
+architecture_settings = {"linear_ode_system": LINEAR_ODE_SYSETEM_ARCHITECTURES}

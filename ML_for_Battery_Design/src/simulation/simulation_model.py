@@ -86,6 +86,7 @@ class SimulationModel(ABC):
         # prepare simulation model
         self.t = self.get_time_points()
         self.hidden_param_names = self.get_param_names()
+        self.num_hidden_params = len(self.hidden_param_names)
         self.default_param_kwargs = self.get_default_param_kwargs()
 
         # init bayesflow Prior

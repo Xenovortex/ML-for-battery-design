@@ -217,9 +217,11 @@ def test_simulation_model_init_method_calls(simulation_settings):
     )
     assert isinstance(test_object.t, np.ndarray)
     assert isinstance(test_object.hidden_param_names, list)
+    assert isinstance(test_object.num_hidden_params, int)
     assert isinstance(test_object.default_param_kwargs, dict)
     assert np.array_equal(test_object.t, test_object.get_time_points())
     assert test_object.hidden_param_names == test_object.get_param_names()
+    assert test_object.num_hidden_params == sum(dummy_hidden_params.values())
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
 
 

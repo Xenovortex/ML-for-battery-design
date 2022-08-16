@@ -11,6 +11,7 @@ tensorflow-gpu = "*"
 sklearn = "*"
 pandas = "*"
 seaborn = "*"
+tabulate = "*"
 
 [dev-packages]
 black = "*"
@@ -28,7 +29,7 @@ pytest-subtests = "*"
 parameterized = "*"
 
 [scripts]
-main = "bash ./bin/main.sh"
+main = "pipenv run python ./ML_for_Battery_Design/src/main.py"
 test = "bash ./bin/test.sh"
 cov = "bash ./bin/cov_report.sh"
 commit = "bash ./bin/git_commit.sh"

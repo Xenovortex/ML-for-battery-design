@@ -1,0 +1,1 @@
+export PYTHONPATH=$PYTHONPATH:$(pwd)/ML_for_Battery_Design/external/BayesFlow

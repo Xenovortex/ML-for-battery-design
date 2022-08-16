@@ -3,15 +3,23 @@
 """Provide command-line user interface.
 
 Usage:
-    main.py train
-    main.py generate_data
-    main.py plot
-    main.py evaluate
+    main.py train_online <sim_model> <summary_net> [<filename>]
+    main.py train_offline <sim_model> <data_name> <summary_net> [<filename>]
+    main.py generate_data <sim_model> <data_name>
+    main.py analyze_sim <sim_model> [<filename>]
+    main.py evaluate <sim_model> <data_name> [<filename>]
+    main.py -h | --help
+
+Options:
+    -h, --help          Show this screen.
+    -s, --save_model    Save trained BayesFlow model.
+    -i, --ignore_sim    Ignore evaluation of simulation model.
 """
 
 from typing import Optional, Sequence
 
 from docopt import docopt
+from tabulate import tabulate
 
 
 def main(argv: Optional[Sequence[str]] = None) -> dict:
@@ -25,13 +33,16 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     """
     args = docopt(__doc__, argv)
 
-    print("User input:", args)
+    print("Interface user input:")
+    print(tabulate(list(args.items()), missingval="None"))
 
-    if bool(args["train"]):
+    if bool(args["train_online"]):
+        pass
+    elif bool(args["train_offline"]):
         pass
     elif bool(args["generate_data"]):
         pass
-    elif bool(args["plot"]):
+    elif bool(args["analyze_sim"]):
         pass
     elif bool(args["evaluate"]):
         pass

@@ -384,9 +384,9 @@ class CNNTest(tf.test.TestCase):
 
     @parameterized.expand(
         [
-            [random.randint(1, 8), random.randint(32, 100), "time_error"],
-            [random.randint(32, 100), random.randint(1, 8), "space_error"],
-            [random.randint(1, 8), random.randint(1, 8), "time_error"],
+            [random.randint(1, 7), random.randint(32, 100), "time_error"],
+            [random.randint(32, 100), random.randint(1, 7), "space_error"],
+            [random.randint(1, 7), random.randint(1, 7), "time_error"],
         ]
     )
     def test_max_pool_leads_to_zero_dim(self, max_time_iter, nr, expected_error):
@@ -437,7 +437,7 @@ class CNNTest(tf.test.TestCase):
             if expected_error == "time_error":
                 self.assertEqual(
                     err.getvalue(),
-                    "{} - call: input x has shape {}, but applying max_pool {} times on time dimesion {} leads to output shape {}".shape(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on time dimesion {} leads to output shape {}".format(
                         model.__class__.__name__,
                         input_data.shape,
                         cnn_num_blocks,
@@ -448,7 +448,7 @@ class CNNTest(tf.test.TestCase):
             elif expected_error == "space_error":
                 self.assertEqual(
                     err.getvalue(),
-                    "{} - call: input x has shape {}, but applying max_pool {} times on space dimesion {} leads to output shape {}".shape(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on space dimesion {} leads to output shape {}".format(
                         model.__class__.__name__,
                         input_data.shape,
                         cnn_num_blocks,

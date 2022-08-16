@@ -50,25 +50,25 @@ class SimulationModel(ABC):
         # input type check
         if not isinstance(self.hidden_params, dict):
             raise TypeError(
-                "{}: hidden_params input is not dictionary type".format(
+                "{} - init: hidden_params input is not dictionary type".format(
                     self.__class__.__name__
                 )
             )
         if not isinstance(self.simulation_settings, dict):
             raise TypeError(
-                "{}: simulation_settings input is not dictionary type".format(
+                "{} - init: simulation_settings input is not dictionary type".format(
                     self.__class__.__name__
                 )
             )
         if not isinstance(self.sample_boundaries, dict):
             raise TypeError(
-                "{}: sample_boundaries input is not dictionary type".format(
+                "{} - init: sample_boundaries input is not dictionary type".format(
                     self.__class__.__name__
                 )
             )
         if not isinstance(self.default_param_values, dict):
             raise TypeError(
-                "{}: default_param_values input is not dictionary type".format(
+                "{} - init: default_param_values input is not dictionary type".format(
                     self.__class__.__name__
                 )
             )

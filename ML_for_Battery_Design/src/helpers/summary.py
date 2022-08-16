@@ -90,7 +90,7 @@ class LSTM_Network(tf.keras.Model):
 
 
 class CNN_Network(tf.keras.Model):
-    """Implements a 2D convolutional neural network
+    """Implements a 2D convolutional neural network (VGG inspired)
 
     Attributes:
         CNN (tf.keras.Model): 2D convolutional neural network architecture
@@ -104,41 +104,43 @@ class CNN_Network(tf.keras.Model):
         """
         super(CNN_Network, self).__init__()
 
-        time_pool_size = 2 if meta["pool_time"] else 1
-        space_pool_size = 2 if meta["pool_space"] else 1
+        time_pool_size = meta["pool_time"] + 1
+        space_pool_size = meta["pool_space"] + 1
+
+        self.num_cnn_blocks = (
+            len(meta["num_filters"]) if meta["num_filters"] is not None else 0
+        )
+        self.min_input_time_dim = time_pool_size**self.num_cnn_blocks
+        self.min_input_space_dim = space_pool_size**self.num_cnn_blocks
 
         self.CNN = Sequential()
-        for num_filters, kernel_size, stride in zip(
-            meta["num_filters"], meta["kernel_size"], meta["stride"]
-        ):
-            self.CNN.add(
-                Conv2D(
-                    num_filters,
-                    kernel_size,
-                    stride,
-                    padding="same",
-                    activation=meta["cnn_activation"],
+        if meta["num_filters"] is not None:
+            for num_filters in meta["num_filters"]:
+                self.CNN.add(
+                    Conv2D(
+                        num_filters,
+                        kernel_size=3,
+                        strides=1,
+                        padding="same",
+                        activation=meta["cnn_activation"],
+                    )
                 )
-            )
-            self.CNN.add(
-                Conv2D(
-                    num_filters,
-                    kernel_size,
-                    stride,
-                    padding="same",
-                    activation=meta["cnn_activation"],
+                self.CNN.add(
+                    Conv2D(
+                        num_filters,
+                        kernel_size=3,
+                        strides=1,
+                        padding="same",
+                        activation=meta["cnn_activation"],
+                    )
                 )
-            )
-            self.CNN.add(
-                MaxPool2D(
-                    pool_size=(time_pool_size, space_pool_size),
-                    strides=(time_pool_size, space_pool_size),
-                    padding="same",
-                )
-            )
-        self.CNN.add(GlobalAveragePooling2D())
-        for unit in meta["units"]:
-            self.CNN.add(Dense(unit, activation=meta["fc_activation"]))
+                self.CNN.add(MaxPool2D(pool_size=(time_pool_size, space_pool_size)))
+            self.CNN.add(GlobalAveragePooling2D())
+        else:
+            self.CNN.add(Flatten())
+        if meta["units"] is not None:
+            for unit in meta["units"]:
+                self.CNN.add(Dense(unit, activation=meta["fc_activation"]))
         self.CNN.add(Dense(meta["summary_dim"], activation="sigmoid"))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
@@ -150,5 +152,37 @@ class CNN_Network(tf.keras.Model):
         Returns:
             out (tf.Tensor): output of shape (batch_size, summary_dim)
         """
+        if self.num_cnn_blocks is not None:
+            if x.shape[1] < self.min_input_time_dim:
+                raise ValueError(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on time dimension {} leads to output shape {}".format(
+                        self.__class__.__name__,
+                        x.shape,
+                        self.num_cnn_blocks,
+                        x.shape[1],
+                        (
+                            x.shape[0],
+                            x.shape[1] // self.min_input_time_dim,
+                            x.shape[2] // self.min_input_space_dim,
+                            x.shape[3],
+                        ),
+                    )
+                )
+            if x.shape[2] < self.min_input_space_dim:
+                raise ValueError(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on space dimension {} leads to output shape {}".format(
+                        self.__class__.__name__,
+                        x.shape,
+                        self.num_cnn_blocks,
+                        x.shape[2],
+                        (
+                            x.shape[0],
+                            x.shape[1] // self.min_input_time_dim,
+                            x.shape[2] // self.min_input_space_dim,
+                            x.shape[3],
+                        ),
+                    )
+                )
+
         out = self.CNN(x)
         return out

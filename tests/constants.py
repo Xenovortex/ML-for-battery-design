@@ -1,0 +1,1 @@
+AUTO_CLOSE_PLOTS = True

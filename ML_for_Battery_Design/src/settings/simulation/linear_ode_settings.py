@@ -7,7 +7,12 @@ HIDDEN_PARAMS = {
     "sample_v0": True,
 }
 
-SIMULATION_SETTINGS = {"dt0": 0.1, "max_time_iter": 30, "use_reject_sampling": True}
+SIMULATION_SETTINGS = {
+    "dt0": 0.1,
+    "max_time_iter": 30,
+    "use_reject_sampling": True,
+    "use_complex_part": True,
+}
 
 SAMPLE_BOUNDARIES = {
     "a": (-10, 10),
@@ -26,6 +31,7 @@ PLOT_SETTINGS = {
     "font_size": 12,
     "show_title": True,
     "show_plot": False,
+    "show_time": None,
     "show_params": True,
     "show_eigen": True,
 }

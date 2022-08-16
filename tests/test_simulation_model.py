@@ -112,7 +112,7 @@ def test_simulation_model_init_non_dict_hidden_params(
         )
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "{}: hidden_params input is not dictionary type".format(
+        assert err == "{} - init: hidden_params input is not dictionary type".format(
             test_object.__class__.__name__
         )
     with pytest.raises(TypeError):
@@ -124,8 +124,11 @@ def test_simulation_model_init_non_dict_hidden_params(
         )
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "{}: simulation_settings input is not dictionary type".format(
-            test_object.__class__.__name__
+        assert (
+            err
+            == "{} - init: simulation_settings input is not dictionary type".format(
+                test_object.__class__.__name__
+            )
         )
     with pytest.raises(TypeError):
         test_object = get_concrete_class(SimulationModel)(
@@ -136,8 +139,11 @@ def test_simulation_model_init_non_dict_hidden_params(
         )
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "{}: sample_boundaries input is not dictionary type".format(
-            test_object.__class__.__name__
+        assert (
+            err
+            == "{} - init: sample_boundaries input is not dictionary type".format(
+                test_object.__class__.__name__
+            )
         )
     with pytest.raises(TypeError):
         test_object = get_concrete_class(SimulationModel)(
@@ -148,8 +154,11 @@ def test_simulation_model_init_non_dict_hidden_params(
         )
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "{}: default_param_values input is not dictionary type".format(
-            test_object.__class__.__name__
+        assert (
+            err
+            == "{} - init: default_param_values input is not dictionary type".format(
+                test_object.__class__.__name__
+            )
         )
 
 

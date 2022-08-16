@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Tuple, Type, Union
 
 import matplotlib.pyplot as plt
@@ -57,7 +58,8 @@ class LinearODEsystem(SimulationModel):
         super().__init__(
             hidden_params, simulation_settings, sample_boundaries, default_param_values
         )
-        self.num_features = 4
+        self.use_complex = self.simulation_settings["use_complex_part"]
+        self.num_features = 4 if self.use_complex else 2
         self.plot_settings = plot_settings
         (
             self.prior,
@@ -122,7 +124,10 @@ class LinearODEsystem(SimulationModel):
                 C[1] * np.exp(eigenvalues[1] * self.t),
             ]
         )
-        solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
+        if self.use_complex:
+            solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
+        else:
+            solution = solution.T.real
         return solution.astype(np.float32)
 
     def plot_sim_data(
@@ -160,20 +165,21 @@ class LinearODEsystem(SimulationModel):
         if self.plot_settings["num_plots"] == 1:
             ax.plot(self.t, sim_data[0, :, 0], label="u(t) real part", c="orange")
             ax.plot(self.t, sim_data[0, :, 1], label="v(t) real part", c="blue")
-            ax.plot(
-                self.t,
-                sim_data[0, :, 2],
-                label="u(t) complex part",
-                c="orange",
-                linestyle="--",
-            )
-            ax.plot(
-                self.t,
-                sim_data[0, :, 3],
-                label="v(t) complex part",
-                c="blue",
-                linestyle="--",
-            )
+            if self.use_complex:
+                ax.plot(
+                    self.t,
+                    sim_data[0, :, 2],
+                    label="u(t) complex part",
+                    c="orange",
+                    linestyle="--",
+                )
+                ax.plot(
+                    self.t,
+                    sim_data[0, :, 3],
+                    label="v(t) complex part",
+                    c="blue",
+                    linestyle="--",
+                )
             if self.plot_settings["show_params"]:
                 for j, param_name in enumerate(self.hidden_param_names):
                     ax.text(
@@ -244,20 +250,21 @@ class LinearODEsystem(SimulationModel):
                     self.t, sim_data[i, :, 0], label="u(t) real part", c="orange"
                 )
                 ax[i].plot(self.t, sim_data[i, :, 1], label="v(t) real part", c="blue")
-                ax[i].plot(
-                    self.t,
-                    sim_data[i, :, 2],
-                    label="u(t) complex part",
-                    c="orange",
-                    linestyle="--",
-                )
-                ax[i].plot(
-                    self.t,
-                    sim_data[i, :, 3],
-                    label="v(t) complex part",
-                    c="blue",
-                    linestyle="--",
-                )
+                if self.use_complex:
+                    ax[i].plot(
+                        self.t,
+                        sim_data[i, :, 2],
+                        label="u(t) complex part",
+                        c="orange",
+                        linestyle="--",
+                    )
+                    ax[i].plot(
+                        self.t,
+                        sim_data[i, :, 3],
+                        label="v(t) complex part",
+                        c="blue",
+                        linestyle="--",
+                    )
                 if self.plot_settings["show_params"]:
                     for j, param_name in enumerate(self.hidden_param_names):
                         ax[i].text(
@@ -344,6 +351,9 @@ class LinearODEsystem(SimulationModel):
             )
 
         if self.plot_settings["show_plot"]:
-            plt.show()
+            plt.show(block=False)
+            if self.plot_settings["show_time"] is not None:
+                time.sleep(self.plot_settings["show_time"])
+                plt.close()
 
         return fig, ax, params, sim_data

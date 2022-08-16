@@ -11,6 +11,7 @@ from ML_for_Battery_Design.src.settings.simulation.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SETTINGS,
 )
 from ML_for_Battery_Design.src.simulation.linear_ode_model import LinearODEsystem
+from tests.constants import AUTO_CLOSE_PLOTS
 
 # ------------------------------ Dummy Test Data ----------------------------- #
 
@@ -30,8 +31,12 @@ dummy_matrices = [
 # ---------------- Test LinearODEsystem Class Inititialization --------------- #
 
 
-def test_linear_ode_system_init(capsys):
-    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_init(use_complex, capsys):
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    expected_num_features = 4 if use_complex else 2
+    test_object = LinearODEsystem(**init_data)
     out, err = capsys.readouterr()
     expected_output = (
         80 * "#"
@@ -41,56 +46,45 @@ def test_linear_ode_system_init(capsys):
         + 80 * "-"
         + "\n"
         + "hidden parameters: {}\n".format(test_object.hidden_param_names)
-        + "dt0: {}\n".format(LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["dt0"])
+        + "dt0: {}\n".format(init_data["simulation_settings"]["dt0"])
         + "max_time_iter: {}\n".format(
-            LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
+            init_data["simulation_settings"]["max_time_iter"]
         )
         + "simulation data dimensions: {}\n".format(
-            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 4)
+            (init_data["simulation_settings"]["max_time_iter"], expected_num_features)
         )
         + "\n"
         + "parameter values:\n"
     )
-    for key, value in LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].items():
+    for key, value in init_data["hidden_params"].items():
         if value:
             expected_output += "{}: {} -> boundary\n".format(
                 key[len("sample_") :],
-                LINEAR_ODE_SYSTEM_SETTINGS["sample_boundaries"][key[len("sample_") :]],
+                init_data["sample_boundaries"][key[len("sample_") :]],
             )
         else:
             expected_output += "{}: {} -> constant\n".format(
                 key[len("sample_") :],
-                LINEAR_ODE_SYSTEM_SETTINGS["default_param_values"][
-                    key[len("sample_") :]
-                ],
+                init_data["default_param_values"][key[len("sample_") :]],
             )
     batch_size = random.randint(1, 8)
     data_dict = test_object.generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]
     sim_data = data_dict["sim_data"]
-    assert test_object.hidden_params == LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"]
-    assert (
-        test_object.simulation_settings
-        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]
-    )
-    assert (
-        test_object.sample_boundaries == LINEAR_ODE_SYSTEM_SETTINGS["sample_boundaries"]
-    )
-    assert (
-        test_object.default_param_values
-        == LINEAR_ODE_SYSTEM_SETTINGS["default_param_values"]
-    )
+    assert test_object.hidden_params == init_data["hidden_params"]
+    assert test_object.simulation_settings == init_data["simulation_settings"]
+    assert test_object.sample_boundaries == init_data["sample_boundaries"]
+    assert test_object.default_param_values == init_data["default_param_values"]
     assert isinstance(test_object.dt0, float)
-    assert test_object.dt0 == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["dt0"]
+    assert test_object.dt0 == init_data["simulation_settings"]["dt0"]
     assert isinstance(test_object.max_time_iter, int)
     assert (
-        test_object.max_time_iter
-        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
+        test_object.max_time_iter == init_data["simulation_settings"]["max_time_iter"]
     )
     assert isinstance(test_object.reject_sampling, bool)
     assert (
         test_object.reject_sampling
-        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["use_reject_sampling"]
+        == init_data["simulation_settings"]["use_reject_sampling"]
     )
     assert isinstance(test_object.is_pde, bool)
     assert not test_object.is_pde
@@ -100,35 +94,30 @@ def test_linear_ode_system_init(capsys):
     assert test_object.hidden_param_names == test_object.get_param_names()
     assert isinstance(test_object.default_param_kwargs, dict)
     assert test_object.default_param_kwargs == test_object.get_default_param_kwargs()
-    assert test_object.num_features == 4
-    assert test_object.plot_settings == LINEAR_ODE_SYSTEM_SETTINGS["plot_settings"]
+    assert test_object.use_complex == use_complex
+    if use_complex:
+        assert test_object.num_features == 4
+    else:
+        assert test_object.num_features == 2
+    assert test_object.plot_settings == init_data["plot_settings"]
     assert isinstance(test_object.prior, Prior)
     assert isinstance(test_object.simulator, Simulator)
     assert isinstance(test_object.generative_model, GenerativeModel)
     assert len(prior_samples.shape) == 2
     assert prior_samples.shape[0] == batch_size
-    assert prior_samples.shape[1] == sum(
-        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
-    )
+    assert prior_samples.shape[1] == sum(init_data["hidden_params"].values())
     assert len(sim_data.shape) == 3
     assert sim_data.shape[0] == batch_size
-    assert (
-        sim_data.shape[1]
-        == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
-    )
+    assert sim_data.shape[1] == init_data["simulation_settings"]["max_time_iter"]
+    assert sim_data.shape[2] == test_object.num_features
     assert isinstance(test_object.prior_means, np.ndarray)
     assert isinstance(test_object.prior_stds, np.ndarray)
     assert len(test_object.prior_means.shape) == 2
     assert test_object.prior_means.shape[0] == 1
-    assert test_object.prior_means.shape[1] == sum(
-        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
-    )
+    assert test_object.prior_means.shape[1] == sum(init_data["hidden_params"].values())
     assert len(test_object.prior_stds.shape) == 2
     assert test_object.prior_stds.shape[0] == 1
-    assert test_object.prior_stds.shape[1] == sum(
-        LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].values()
-    )
-    assert sim_data.shape[2] == test_object.num_features
+    assert test_object.prior_stds.shape[1] == sum(init_data["hidden_params"].values())
     assert out == expected_output
     assert err == ""
 
@@ -188,8 +177,12 @@ def test_linear_ode_system_get_default_param_kwargs_method():
             assert key[len("sample_") :] not in default_param_kwargs
 
 
-def test_linear_ode_system_print_internal_settings_method(capsys):
-    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_print_internal_settings_method(use_complex, capsys):
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    expected_num_features = 4 if use_complex else 2
+    test_object = LinearODEsystem(**init_data)
     _, _ = capsys.readouterr()
 
     expected_output = (
@@ -200,28 +193,26 @@ def test_linear_ode_system_print_internal_settings_method(capsys):
         + 80 * "-"
         + "\n"
         + "hidden parameters: {}\n".format(test_object.hidden_param_names)
-        + "dt0: {}\n".format(LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["dt0"])
+        + "dt0: {}\n".format(init_data["simulation_settings"]["dt0"])
         + "max_time_iter: {}\n".format(
-            LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
+            init_data["simulation_settings"]["max_time_iter"]
         )
         + "simulation data dimensions: {}\n".format(
-            (LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"], 4)
+            (init_data["simulation_settings"]["max_time_iter"], expected_num_features)
         )
         + "\n"
         + "parameter values:\n"
     )
-    for key, value in LINEAR_ODE_SYSTEM_SETTINGS["hidden_params"].items():
+    for key, value in init_data["hidden_params"].items():
         if value:
             expected_output += "{}: {} -> boundary\n".format(
                 key[len("sample_") :],
-                LINEAR_ODE_SYSTEM_SETTINGS["sample_boundaries"][key[len("sample_") :]],
+                init_data["sample_boundaries"][key[len("sample_") :]],
             )
         else:
             expected_output += "{}: {} -> constant\n".format(
                 key[len("sample_") :],
-                LINEAR_ODE_SYSTEM_SETTINGS["default_param_values"][
-                    key[len("sample_") :]
-                ],
+                init_data["default_param_values"][key[len("sample_") :]],
             )
 
     test_object.print_internal_settings()
@@ -288,7 +279,10 @@ def test_linear_ode_system_get_bayesflow_amortizer():
         sim_data.shape[1]
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
-    assert sim_data.shape[2] == 4
+    if LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["use_complex_part"]:
+        assert sim_data.shape[2] == 4
+    else:
+        assert sim_data.shape[2] == 2
 
 
 def test_linear_ode_system_get_prior_means_stds():
@@ -312,8 +306,11 @@ def test_linear_ode_system_get_prior_means_stds():
 # --------------------- Test implemented abstract methods -------------------- #
 
 
-def test_linear_ode_system_get_sim_data_sim_method():
-    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_get_sim_data_sim_method(use_complex):
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    test_object = LinearODEsystem(**init_data)
     sim_data_dim = test_object.get_sim_data_dim()
     assert isinstance(sim_data_dim, tuple)
     assert len(sim_data_dim) == 2
@@ -321,7 +318,10 @@ def test_linear_ode_system_get_sim_data_sim_method():
         sim_data_dim[0]
         == LINEAR_ODE_SYSTEM_SETTINGS["simulation_settings"]["max_time_iter"]
     )
-    assert sim_data_dim[1] == 4
+    if use_complex:
+        assert sim_data_dim[1] == 4
+    else:
+        assert sim_data_dim[1] == 2
 
 
 @pytest.mark.parametrize("dummy_matrix", dummy_matrices)
@@ -333,8 +333,11 @@ def test_linear_ode_system_reject_sampler_method(dummy_matrix):
     assert reject == dummy_matrix[1]
 
 
-def test_linear_ode_system_solver_method():
-    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SETTINGS)
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_solver_method(use_complex):
+    init_data = LINEAR_ODE_SYSTEM_SETTINGS
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    test_object = LinearODEsystem(**init_data)
     params = test_object.uniform_prior()
     solution = test_object.solver(params)
     assert isinstance(solution, np.ndarray)
@@ -343,13 +346,16 @@ def test_linear_ode_system_solver_method():
     assert np.all(np.isfinite(solution))
 
 
-def test_linear_ode_system_plot_sim_data_one_plot():
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_plot_sim_data_one_plot(use_complex):
     init_data = LINEAR_ODE_SYSTEM_SETTINGS
     init_data["plot_settings"]["num_plots"] = 1
     init_data["plot_settings"]["show_title"] = True
     init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
     init_data["plot_settings"]["show_params"] = True
     init_data["plot_settings"]["show_eigen"] = True
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
     test_object = LinearODEsystem(**init_data)
     fig, ax, params, sim_data = test_object.plot_sim_data(filename="pytest")
     assert isinstance(fig, Figure)
@@ -376,13 +382,16 @@ def test_linear_ode_system_plot_sim_data_one_plot():
         os.rmdir("results/pytest")
 
 
-def test_linear_ode_system_plot_sim_data_multiple_row_plots():
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_plot_sim_data_multiple_row_plots(use_complex):
     init_data = LINEAR_ODE_SYSTEM_SETTINGS
     init_data["plot_settings"]["num_plots"] = 8
     init_data["plot_settings"]["show_title"] = True
     init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
     init_data["plot_settings"]["show_params"] = True
     init_data["plot_settings"]["show_eigen"] = True
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
     test_object = LinearODEsystem(**init_data)
     fig, ax, params, sim_data = test_object.plot_sim_data(filename="pytest")
     assert isinstance(fig, Figure)

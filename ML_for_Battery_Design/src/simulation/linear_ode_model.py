@@ -46,7 +46,7 @@ class LinearODEsystem(SimulationModel):
         default_param_values: dict,
         plot_settings: dict,
     ) -> None:
-        """Initializes a :class:LinearODEsystem simulation model
+        """Initializes :class:LinearODEsystem simulation model
 
         Args:
             hidden_params (dict): boolean values for if each hidden parameter should be sampled or stay constant

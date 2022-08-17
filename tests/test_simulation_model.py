@@ -239,10 +239,10 @@ def test_simulation_model_init_bayesflow_prior(simulation_settings):
     assert isinstance(test_object.prior, Prior)
     assert isinstance(test_object.prior_means, np.ndarray)
     assert isinstance(test_object.prior_stds, np.ndarray)
-    assert len(test_object.prior_means.shape) == 2
+    assert test_object.prior_means.ndim == 2
     assert test_object.prior_means.shape[0] == 1
     assert test_object.prior_means.shape[1] == sum(dummy_hidden_params.values())
-    assert len(test_object.prior_stds.shape) == 2
+    assert test_object.prior_stds.ndim == 2
     assert test_object.prior_stds.shape[0] == 1
     assert test_object.prior_stds.shape[1] == sum(dummy_hidden_params.values())
 
@@ -319,7 +319,7 @@ def test_simulation_model_get_time_points_method(simulation_settings):
     )
     time_points = test_object.get_time_points()
     assert isinstance(time_points, np.ndarray)
-    assert len(time_points.shape) == 1
+    assert time_points.ndim == 1
     assert time_points.shape[0] == simulation_settings["max_time_iter"]
     assert np.all(np.isclose(np.diff(time_points), simulation_settings["dt0"]))
 
@@ -542,7 +542,7 @@ def test_simulation_model_uniform_prior_method(
 
     assert isinstance(sample, np.ndarray)
     assert sample.dtype == np.float32
-    assert len(sample.shape) == 1
+    assert sample.ndim == 1
     assert sample.shape[0] == sum(dummy_hidden_params.values())
     counter = 0
     for name, (lower_boundary, upper_boundary) in dummy_sample_boundaries.items():
@@ -575,10 +575,10 @@ def test_simulation_model_get_bayesflow_amortizer_ode():
     assert isinstance(prior, Prior)
     assert isinstance(simulator, Simulator)
     assert isinstance(generative_model, GenerativeModel)
-    assert len(prior_samples.shape) == 2
+    assert prior_samples.ndim == 2
     assert prior_samples.shape[0] == batch_size
     assert prior_samples.shape[1] == sum(dummy_hidden_params.values())
-    assert len(sim_data.shape) == 3
+    assert sim_data.ndim == 3
     assert sim_data.shape[0] == batch_size
     assert sim_data.shape[1] == dummy_ode_simulation_settings["max_time_iter"]
     assert sim_data.shape[2] == 2
@@ -613,10 +613,10 @@ def test_simulation_model_get_bayesflow_amortizer_pde():
     assert isinstance(prior, Prior)
     assert isinstance(simulator, Simulator)
     assert isinstance(generative_model, GenerativeModel)
-    assert len(prior_samples.shape) == 2
+    assert prior_samples.ndim == 2
     assert prior_samples.shape[0] == batch_size
     assert prior_samples.shape[1] == sum(dummy_hidden_params.values())
-    assert len(sim_data.shape) == 4
+    assert sim_data.ndim == 4
     assert sim_data.shape[0] == batch_size
     assert sim_data.shape[1] == dummy_pde_simulation_settings["max_time_iter"]
     assert sim_data.shape[2] == dummy_pde_simulation_settings["nr"]
@@ -648,9 +648,9 @@ def test_simulation_model_get_prior_means_stds(simulation_settings):
 
     assert isinstance(prior_means, np.ndarray)
     assert isinstance(prior_stds, np.ndarray)
-    assert len(prior_means.shape) == 2
+    assert prior_means.ndim == 2
     assert prior_means.shape[0] == 1
     assert prior_means.shape[1] == sum(dummy_hidden_params.values())
-    assert len(prior_stds.shape) == 2
+    assert prior_stds.ndim == 2
     assert prior_stds.shape[0] == 1
     assert prior_stds.shape[1] == sum(dummy_hidden_params.values())

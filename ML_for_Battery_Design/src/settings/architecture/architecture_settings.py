@@ -1,3 +1,0 @@
-from linear_ode_architectures import LINEAR_ODE_SYSETEM_ARCHITECTURES
-
-architecture_settings = {"linear_ode_system": LINEAR_ODE_SYSETEM_ARCHITECTURES}

@@ -530,5 +530,28 @@ def test_processing_call_remove_nan(model_name):
 
 
 @pytest.mark.parametrize("model_name", models)
-def test_procesing_call_value_error(model_name):
-    pass
+def test_procesing_call_value_error(model_name, capsys):
+    processing_settings = {
+        "norm_prior": False,
+        "norm_sim_data": "".join(
+            random.choices(string.ascii_letters, k=random.randrange(10))
+        ),
+        "remove_nan": False,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+
+    configurator = Processing(processing_settings)
+
+    with pytest.raises(ValueError):
+        configurator(data_dict)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - call: processing setting norm_sim_data '{}' is not a valid input".format(
+                configurator.__class__.__name__, processing_settings["norm_sim_data"]
+            )
+        )

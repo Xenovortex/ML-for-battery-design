@@ -4,7 +4,11 @@ import string
 import numpy as np
 import pytest
 
-from ML_for_Battery_Design.src.helpers.constants import inference_settings
+from ML_for_Battery_Design.src.helpers.constants import (
+    inference_settings,
+    sim_model_collection,
+    simulation_settings,
+)
 from ML_for_Battery_Design.src.helpers.processing import Processing
 
 models = ["linear_ode_system"]
@@ -317,5 +321,214 @@ def test_processing_init_type_error(non_dict_input, capsys):
         assert err == "{} - init: processing_settings input is not dictionary type"
 
 
-def test_processing_call():
+@pytest.mark.parametrize("model_name", models)
+def test_processing_call_norm_prior(model_name):
+    processing_settings = {
+        "norm_prior": True,
+        "norm_sim_data": None,
+        "remove_nan": False,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+    means = np.mean(data_dict["prior_draws"], axis=0, keepdims=True)
+    stds = np.std(data_dict["prior_draws"], axis=0, keepdims=True)
+
+    configurator = Processing(processing_settings, prior_means=means, prior_stds=stds)
+
+    out_dict = configurator(data_dict)
+
+    assert isinstance(configurator.settings, dict)
+    assert isinstance(configurator.prior_means, np.ndarray)
+    assert isinstance(configurator.prior_stds, np.ndarray)
+    assert configurator.settings == processing_settings
+    assert np.array_equal(configurator.prior_means, means)
+    assert np.array_equal(configurator.prior_stds, stds)
+    assert configurator.sim_data_means is None
+    assert configurator.sim_data_stds is None
+    assert out_dict["parameters"].ndim == 2
+    assert out_dict["parameters"].shape[0] == batch_size
+    assert out_dict["parameters"].shape[1] == test_object.num_hidden_params
+    assert out_dict["summary_conditions"].shape[0] == batch_size
+    assert out_dict["summary_conditions"].shape[1] == test_object.max_time_iter
+    if test_object.is_pde:
+        assert out_dict["summary_conditions"].ndim == 4
+        assert out_dict["summary_conditions"].shape[2] == test_object.nr
+        assert out_dict["summary_conditions"].shape[3] == test_object.num_features
+    else:
+        assert out_dict["summary_conditions"].ndim == 3
+        assert out_dict["summary_conditions"].shape[2] == test_object.num_features
+    assert np.allclose(
+        np.mean(out_dict["parameters"], axis=0),
+        np.zeros(test_object.num_hidden_params),
+        atol=1e-6,
+        equal_nan=True,
+    )
+    assert np.allclose(
+        np.std(out_dict["parameters"], axis=0),
+        np.ones(test_object.num_hidden_params),
+        atol=1e-6,
+        equal_nan=True,
+    )
+    assert np.array_equal(out_dict["summary_conditions"], data_dict["sim_data"])
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_processing_call_norm_sim_data_log(model_name):
+    processing_settings = {
+        "norm_prior": False,
+        "norm_sim_data": "log_norm",
+        "remove_nan": False,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+
+    configurator = Processing(processing_settings)
+
+    out_dict = configurator(data_dict)
+
+    assert isinstance(configurator.settings, dict)
+    assert configurator.settings == processing_settings
+    assert configurator.prior_means is None
+    assert configurator.prior_stds is None
+    assert configurator.sim_data_means is None
+    assert configurator.sim_data_stds is None
+    assert out_dict["parameters"].ndim == 2
+    assert out_dict["parameters"].shape[0] == batch_size
+    assert out_dict["parameters"].shape[1] == test_object.num_hidden_params
+    assert out_dict["summary_conditions"].shape[0] == batch_size
+    assert out_dict["summary_conditions"].shape[1] == test_object.max_time_iter
+    if test_object.is_pde:
+        assert out_dict["summary_conditions"].ndim == 4
+        assert out_dict["summary_conditions"].shape[2] == test_object.nr
+        assert out_dict["summary_conditions"].shape[3] == test_object.num_features
+    else:
+        assert out_dict["summary_conditions"].ndim == 3
+        assert out_dict["summary_conditions"].shape[2] == test_object.num_features
+    assert np.array_equal(out_dict["parameters"], data_dict["prior_draws"])
+    assert np.array_equal(
+        out_dict["summary_conditions"],
+        np.log1p(data_dict["sim_data"]),
+        equal_nan=True,
+    )
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_processing_call_norm_sim_data_mean_std(model_name):
+    processing_settings = {
+        "norm_prior": False,
+        "norm_sim_data": "mean_std",
+        "remove_nan": False,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+    means = np.mean(data_dict["sim_data"], axis=0, keepdims=True)
+    stds = np.std(data_dict["sim_data"], axis=0, keepdims=True)
+
+    configurator = Processing(
+        processing_settings, sim_data_means=means, sim_data_stds=stds
+    )
+
+    out_dict = configurator(data_dict)
+
+    assert isinstance(configurator.settings, dict)
+    assert isinstance(configurator.sim_data_means, np.ndarray)
+    assert isinstance(configurator.sim_data_stds, np.ndarray)
+    assert configurator.settings == processing_settings
+    assert configurator.prior_means is None
+    assert configurator.prior_stds is None
+    assert np.array_equal(configurator.sim_data_means, means)
+    assert np.array_equal(configurator.sim_data_stds, stds)
+    assert out_dict["parameters"].ndim == 2
+    assert out_dict["parameters"].shape[0] == batch_size
+    assert out_dict["parameters"].shape[1] == test_object.num_hidden_params
+    assert out_dict["summary_conditions"].shape[0] == batch_size
+    assert out_dict["summary_conditions"].shape[1] == test_object.max_time_iter
+    if test_object.is_pde:
+        assert out_dict["summary_conditions"].ndim == 4
+        assert out_dict["summary_conditions"].shape[2] == test_object.nr
+        assert out_dict["summary_conditions"].shape[3] == test_object.num_features
+    else:
+        assert out_dict["summary_conditions"].ndim == 3
+        assert out_dict["summary_conditions"].shape[2] == test_object.num_features
+    assert np.array_equal(out_dict["parameters"], data_dict["prior_draws"])
+    if test_object.is_pde:
+        assert np.allclose(
+            np.mean(out_dict["summary_conditions"], axis=0),
+            np.zeros(
+                (test_object.max_time_iter, test_object.nr, test_object.num_features)
+            ),
+            atol=1e-5,
+            equal_nan=True,
+        )
+        assert np.allclose(
+            np.std(out_dict["summary_conditions"], axis=0),
+            np.ones(
+                (test_object.max_time_iter, test_object.nr, test_object.num_features)
+            ),
+            atol=1e-5,
+            equal_nan=True,
+        )
+    else:
+        assert np.allclose(
+            np.mean(out_dict["summary_conditions"], axis=0),
+            np.zeros((test_object.max_time_iter, test_object.num_features)),
+            atol=1e-5,
+            equal_nan=True,
+        )
+        assert np.allclose(
+            np.std(out_dict["summary_conditions"], axis=0),
+            np.ones((test_object.max_time_iter, test_object.num_features)),
+            atol=1e-5,
+            equal_nan=True,
+        )
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_processing_call_remove_nan(model_name):
+    processing_settings = {
+        "norm_prior": False,
+        "norm_sim_data": None,
+        "remove_nan": True,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+    nan_mask = np.random.choice(
+        [True, False], size=data_dict["sim_data"].shape, p=(0.1, 0.9)
+    )
+    data_dict["sim_data"][nan_mask] = np.nan
+
+    configurator = Processing(processing_settings)
+
+    out_dict = configurator(data_dict)
+
+    assert isinstance(configurator.settings, dict)
+    assert configurator.settings == processing_settings
+    assert configurator.prior_means is None
+    assert configurator.prior_stds is None
+    assert configurator.sim_data_means is None
+    assert configurator.sim_data_stds is None
+    assert out_dict["parameters"].shape[0] == out_dict["summary_conditions"].shape[0]
+    assert out_dict["parameters"].ndim == 2
+    assert out_dict["parameters"].shape[1] == test_object.num_hidden_params
+    assert out_dict["summary_conditions"].shape[1] == test_object.max_time_iter
+    if test_object.is_pde:
+        assert out_dict["summary_conditions"].ndim == 4
+        assert out_dict["summary_conditions"].shape[2] == test_object.nr
+        assert out_dict["summary_conditions"].shape[3] == test_object.num_features
+    else:
+        assert out_dict["summary_conditions"].ndim == 3
+        assert out_dict["summary_conditions"].shape[2] == test_object.num_features
+    assert not np.any(np.isnan(out_dict["summary_conditions"]))
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_procesing_call_value_error(model_name):
     pass

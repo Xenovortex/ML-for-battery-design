@@ -270,9 +270,9 @@ def test_linear_ode_system_uniform_prior_method():
             counter += 1
 
 
-def test_linear_ode_system_get_bayesflow_amortizer():
+def test_linear_ode_system_get_bayesflow_generator():
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS)
-    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+    prior, simulator, generative_model = test_object.get_bayesflow_generator()
     batch_size = random.randint(1, 8)
     data_dict = generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]

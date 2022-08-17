@@ -242,7 +242,7 @@ class SimulationModel(ABC):
 
         return sample.astype(np.float32)
 
-    def get_bayesflow_amortizer(
+    def get_bayesflow_generator(
         self,
     ) -> Tuple[Type[Prior], Type[Simulator], Type[GenerativeModel]]:
         """Initialize and return BayesFlow amortizer classes: Prior, Simulator, GenerativeModel

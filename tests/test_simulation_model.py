@@ -552,7 +552,7 @@ def test_simulation_model_uniform_prior_method(
             counter += 1
 
 
-def test_simulation_model_get_bayesflow_amortizer_ode():
+def test_simulation_model_get_bayesflow_generator_ode():
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_ode_simulation_settings,
@@ -567,7 +567,7 @@ def test_simulation_model_get_bayesflow_amortizer_ode():
 
     setattr(test_object, "solver", dummy_solver)
 
-    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+    prior, simulator, generative_model = test_object.get_bayesflow_generator()
     batch_size = random.randint(1, 8)
     data_dict = generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]
@@ -584,7 +584,7 @@ def test_simulation_model_get_bayesflow_amortizer_ode():
     assert sim_data.shape[2] == 2
 
 
-def test_simulation_model_get_bayesflow_amortizer_pde():
+def test_simulation_model_get_bayesflow_generator_pde():
     test_object = get_concrete_class(SimulationModel)(
         dummy_hidden_params,
         dummy_pde_simulation_settings,
@@ -605,7 +605,7 @@ def test_simulation_model_get_bayesflow_amortizer_pde():
 
     setattr(test_object, "solver", dummy_solver)
 
-    prior, simulator, generative_model = test_object.get_bayesflow_amortizer()
+    prior, simulator, generative_model = test_object.get_bayesflow_generator()
     batch_size = random.randint(1, 8)
     data_dict = generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]

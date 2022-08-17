@@ -65,7 +65,7 @@ class LinearODEsystem(SimulationModel):
             self.prior,
             self.simulator,
             self.generative_model,
-        ) = self.get_bayesflow_amortizer()
+        ) = self.get_bayesflow_generator()
         self.print_internal_settings()
 
     def get_sim_data_dim(self) -> tuple:

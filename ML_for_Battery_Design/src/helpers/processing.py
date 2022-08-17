@@ -73,7 +73,7 @@ class Processing:
                     )
                 )
 
-    def call(self, forward_dict: dict) -> dict:
+    def __call__(self, forward_dict: dict) -> dict:
         """ "Perform processing transform on input batch for BayesFlow
 
         Args:
@@ -92,7 +92,7 @@ class Processing:
         if self.settings["norm_sim_data"] is not None:
             if self.settings["norm_sim_data"] == "log_norm":
                 sim_data = np.log1p(sim_data)
-            if self.settings["norm_sim_data"] == "mean_std":
+            elif self.settings["norm_sim_data"] == "mean_std":
                 sim_data = (sim_data - self.sim_data_means) / self.sim_data_stds
             else:
                 raise ValueError(

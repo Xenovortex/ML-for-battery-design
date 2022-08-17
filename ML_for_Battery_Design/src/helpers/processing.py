@@ -38,6 +38,13 @@ class Processing:
         self.sim_data_means = sim_data_means
         self.sim_data_stds = sim_data_stds
 
+        if not isinstance(self.settings, dict):
+            raise TypeError(
+                "{} - init: processing_settings input is not dictionary type".format(
+                    self.__class__.__name__
+                )
+            )
+
         if self.settings["norm_prior"]:
             if self.prior_means is None:
                 raise ValueError(
@@ -79,6 +86,9 @@ class Processing:
         params = forward_dict["prior_draws"]
         sim_data = forward_dict["sim_data"]
 
+        if self.settings["norm_prior"]:
+            params = (params - self.prior_means) / self.prior_stds
+
         if self.settings["norm_sim_data"] is not None:
             if self.settings["norm_sim_data"] == "log_norm":
                 sim_data = np.log1p(sim_data)
@@ -90,9 +100,6 @@ class Processing:
                         self.__class__.__name__, self.settings["norm_sim_data"]
                     )
                 )
-
-        if self.settings["norm_prior"]:
-            params = (params - self.prior_means) / self.prior_stds
 
         if self.settings["remove_nan"]:
             if sim_data.ndim == 3:

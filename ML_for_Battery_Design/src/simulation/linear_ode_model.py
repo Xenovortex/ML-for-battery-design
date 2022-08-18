@@ -1,4 +1,5 @@
 import os
+import pathlib
 import time
 from typing import Tuple, Type, Union
 
@@ -131,7 +132,8 @@ class LinearODEsystem(SimulationModel):
         return solution.astype(np.float32)
 
     def plot_sim_data(
-        self, filename: str = None
+        self,
+        parent_folder: str = None,
     ) -> Tuple[
         Type[Figure],
         Union[Type[Axes], Type[np.flatiter]],
@@ -141,7 +143,7 @@ class LinearODEsystem(SimulationModel):
         """Generate simulation data plots
 
         Args:
-            filename (str, optional): If given, save plot under results/filename/plots/filename-sim_data.png. Defaults to None.
+            parent_folder (str, optional): If given, save plot under parent_folder/sim_data.png. Defaults to None.
 
         Returns:
             fig (plt.Figure) : matplotlib Figure instance for external access
@@ -336,13 +338,9 @@ class LinearODEsystem(SimulationModel):
 
         plt.tight_layout()
 
-        if filename is not None:
-            save_path = os.path.join(
-                "results", filename, "plots", filename + "-sim_data.png"
-            )
-            if not os.path.exists(os.path.dirname(save_path)):
-                os.makedirs(os.path.dirname(save_path))
-
+        if parent_folder is not None:
+            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
+            save_path = os.path.join(parent_folder, "sim_data.png")
             fig.savefig(
                 save_path,
                 transparent=True,

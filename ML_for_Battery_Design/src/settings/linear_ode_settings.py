@@ -1,4 +1,5 @@
 from bayesflow.default_settings import MetaDictSetting
+from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 
 # ---------------------------------------------------------------------------- #
 #                              Simulation Settings                             #
@@ -81,7 +82,11 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 # ---------------------------------------------------------------------------- #
 
 
-LINEAR_ODE_SYSTEM_TRAINING_SETTINGS: dict = {}
+LINEAR_ODE_SYSTEM_TRAINING_SETTINGS: dict = {
+    "lr": PiecewiseConstantDecay(
+        [50000, 100000, 150000], [0.001, 0.0001, 0.00001, 0.000001]
+    )
+}
 
 LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
     "norm_prior": True,

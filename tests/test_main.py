@@ -48,6 +48,36 @@ def test_main_train_online(filename, capsys):
     assert args["<summary_net>"] == summary
     assert args["<filename>"] == filename
     assert args["<data_name>"] is None
+    assert not args["--save_model"]
+
+
+@pytest.mark.parametrize("filename", random_input + [None])
+@pytest.mark.parametrize("save_model", ["-s", "--save_model"])
+def test_main_train_online_save_model(filename, save_model, capsys):
+    sim = random.choice(random_input)
+    summary = random.choice(random_input)
+    if filename is None:
+        with pytest.raises(DocoptExit):
+            main.main(["train_online", sim, summary, save_model])
+    else:
+        args = main.main(["train_online", sim, summary, filename, save_model])
+        out, err = capsys.readouterr()
+        assert out == (
+            "Interface user input:\n"
+            + tabulate(list(args.items()), missingval="None")
+            + "\n"
+        )
+        assert err == ""
+        assert bool(args["train_online"])
+        assert not bool(args["train_offline"])
+        assert not bool(args["generate_data"])
+        assert not bool(args["analyze_sim"])
+        assert not bool(args["evaluate"])
+        assert args["<sim_model>"] == sim
+        assert args["<summary_net>"] == summary
+        assert args["<filename>"] == filename
+        assert args["<data_name>"] is None
+        assert args["--save_model"]
 
 
 @pytest.mark.parametrize("filename", random_input + [None])
@@ -76,6 +106,38 @@ def test_main_train_offline(filename, capsys):
     assert args["<data_name>"] == data
     assert args["<summary_net>"] == summary
     assert args["<filename>"] == filename
+    assert not args["--save_model"]
+
+
+@pytest.mark.parametrize("filename", random_input + [None])
+@pytest.mark.parametrize("save_model", ["-s", "--save_model"])
+def test_main_train_offline_save_model(filename, save_model, capsys):
+    sim = random.choice(random_input)
+    data = random.choice(random_input)
+    summary = random.choice(random_input)
+    if filename is None:
+        with pytest.raises(DocoptExit):
+            main.main(["train_offline", sim, summary, save_model])
+    else:
+        args = main.main(["train_offline", sim, data, summary, filename, save_model])
+        out, err = capsys.readouterr()
+        assert (
+            out
+            == "Interface user input:\n"
+            + tabulate(list(args.items()), missingval="None")
+            + "\n"
+        )
+        assert err == ""
+        assert bool(args["train_offline"])
+        assert not bool(args["train_online"])
+        assert not bool(args["generate_data"])
+        assert not bool(args["analyze_sim"])
+        assert not bool(args["evaluate"])
+        assert args["<sim_model>"] == sim
+        assert args["<data_name>"] == data
+        assert args["<summary_net>"] == summary
+        assert args["<filename>"] == filename
+        assert args["--save_model"]
 
 
 def test_main_generate_data(capsys):
@@ -99,6 +161,7 @@ def test_main_generate_data(capsys):
     assert args["<data_name>"] == data
     assert args["<summary_net>"] is None
     assert args["<filename>"] is None
+    assert not args["--save_model"]
 
 
 @pytest.mark.parametrize("filename", random_input + [None])
@@ -125,16 +188,14 @@ def test_main_analyze_sim(filename, capsys):
     assert args["<filename>"] == filename
     assert args["<data_name>"] is None
     assert args["<summary_net>"] is None
+    assert not args["--save_model"]
 
 
-@pytest.mark.parametrize("filename", random_input + [None])
+@pytest.mark.parametrize("filename", random_input)
 def test_main_evaluate(filename, capsys):
     sim = random.choice(random_input)
     data = random.choice(random_input)
-    if filename is not None:
-        args = main.main(["evaluate", sim, data, filename])
-    else:
-        args = main.main(["evaluate", sim, data])
+    args = main.main(["evaluate", sim, data, filename])
     out, err = capsys.readouterr()
     assert (
         out
@@ -152,6 +213,7 @@ def test_main_evaluate(filename, capsys):
     assert args["<data_name>"] == data
     assert args["<filename>"] == filename
     assert args["<summary_net>"] is None
+    assert not args["--save_model"]
 
 
 @pytest.mark.parametrize("random_input", random_input)

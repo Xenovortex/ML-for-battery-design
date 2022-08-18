@@ -4,16 +4,17 @@
 
 Usage:
     main.py train_online <sim_model> <summary_net> [<filename>]
+    main.py train_online <sim_model> <summary_net> <filename> [-s | --save_model]
     main.py train_offline <sim_model> <data_name> <summary_net> [<filename>]
+    main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model]
     main.py generate_data <sim_model> <data_name>
     main.py analyze_sim <sim_model> [<filename>]
-    main.py evaluate <sim_model> <data_name> [<filename>]
+    main.py evaluate <sim_model> <data_name> <filename>
     main.py -h | --help
 
 Options:
     -h, --help          Show this screen.
     -s, --save_model    Save trained BayesFlow model.
-    -i, --ignore_sim    Ignore evaluation of simulation model.
 """
 
 from typing import Optional, Sequence

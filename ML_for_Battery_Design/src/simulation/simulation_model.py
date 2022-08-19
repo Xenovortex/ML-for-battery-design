@@ -268,3 +268,9 @@ class SimulationModel(ABC):
         """
         prior_means, prior_stds = self.prior.estimate_means_and_stds()
         return prior_means, prior_stds
+
+
+"""
+    def generate_hdf5_data(self):
+        pass
+"""

@@ -360,16 +360,14 @@ def test_processing_call_norm_prior(model_name):
         assert out_dict["summary_conditions"].ndim == 3
         assert out_dict["summary_conditions"].shape[2] == test_object.num_features
     assert np.allclose(
-        np.mean(out_dict["parameters"], axis=0),
+        np.nan_to_num(np.mean(out_dict["parameters"], axis=0), nan=0),
         np.zeros(test_object.num_hidden_params),
         atol=1e-6,
-        equal_nan=True,
     )
     assert np.allclose(
-        np.std(out_dict["parameters"], axis=0),
+        np.nan_to_num(np.std(out_dict["parameters"], axis=0), nan=1),
         np.ones(test_object.num_hidden_params),
         atol=1e-6,
-        equal_nan=True,
     )
     assert np.array_equal(out_dict["summary_conditions"], data_dict["sim_data"])
 
@@ -459,33 +457,29 @@ def test_processing_call_norm_sim_data_mean_std(model_name):
     assert np.array_equal(out_dict["parameters"], data_dict["prior_draws"])
     if test_object.is_pde:
         assert np.allclose(
-            np.mean(out_dict["summary_conditions"], axis=0),
+            np.nan_to_num(np.mean(out_dict["summary_conditions"], axis=0), nan=0),
             np.zeros(
                 (test_object.max_time_iter, test_object.nr, test_object.num_features)
             ),
             atol=1e-5,
-            equal_nan=True,
         )
         assert np.allclose(
-            np.std(out_dict["summary_conditions"], axis=0),
+            np.nan_to_num(np.std(out_dict["summary_conditions"], axis=0), nan=1),
             np.ones(
                 (test_object.max_time_iter, test_object.nr, test_object.num_features)
             ),
             atol=1e-5,
-            equal_nan=True,
         )
     else:
         assert np.allclose(
-            np.mean(out_dict["summary_conditions"], axis=0),
+            np.nan_to_num(np.mean(out_dict["summary_conditions"], axis=0), nan=0),
             np.zeros((test_object.max_time_iter, test_object.num_features)),
             atol=1e-5,
-            equal_nan=True,
         )
         assert np.allclose(
-            np.std(out_dict["summary_conditions"], axis=0),
+            np.nan_to_num(np.std(out_dict["summary_conditions"], axis=0), nan=1),
             np.ones((test_object.max_time_iter, test_object.num_features)),
             atol=1e-5,
-            equal_nan=True,
         )
 
 

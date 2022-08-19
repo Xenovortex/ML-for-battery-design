@@ -3,12 +3,6 @@ import os
 
 class FileManager:
     def __init__(self, mode: str, **kwargs: str) -> None:
-        if not isinstance(kwargs, dict):
-            raise TypeError(
-                "{} - init: **kwargs is not dictionary type".format(
-                    self.__class__.__name__
-                )
-            )
         self.mode = mode
         self.sim_model_name = kwargs["<sim_model>"]
         self.summary_net_name = kwargs["<summary_net>"]
@@ -36,6 +30,7 @@ class FileManager:
 
 
 """
+
     def generate_config_summary(self, file_type: str, path: str) -> None:
         if file_type == "data":
             with open(os.path.join(path, "config_info.txt"), "w") as file:
@@ -52,4 +47,5 @@ class FileManager:
                     self.__class__.__name__, file_type
                 )
             )
+
 """

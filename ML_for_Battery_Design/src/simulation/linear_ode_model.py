@@ -373,6 +373,13 @@ class LinearODEsystem(SimulationModel):
     ]:
         plt.rcParams["font.size"] = self.plot_settings["font_size"]
 
+        if self.plot_settings["num_plots"] < 1:
+            raise ValueError(
+                "{} - plot_resimulation: num_plots is {}, but can not be negative or zero".format(
+                    self.__class__.__name__, self.plot_settings["num_plots"]
+                )
+            )
+
         if self.plot_settings["num_plots"] > post_samples.shape[0]:
             raise ValueError(
                 "{} - plot_resimulation: num_plots is {}, but only {} post_samples given".format(
@@ -663,7 +670,7 @@ class LinearODEsystem(SimulationModel):
                         np.median(resim[i, :, :, 3], axis=0),
                         label="Median v(t) complex part",
                         color="blue",
-                        linesytle="--",
+                        linestyle="--",
                     )
                     v_complex_qt_50 = np.quantile(
                         resim[i, :, :, 3], q=[0.25, 0.75], axis=0
@@ -698,13 +705,6 @@ class LinearODEsystem(SimulationModel):
                         alpha=0.1,
                         label="v complex: 95% CI",
                     )
-
-        else:
-            raise ValueError(
-                "{} - plot_resimulation: num_plots is {}, but can not be negative or zero".format(
-                    self.__class__.__name__, self.plot_settings["num_plots"]
-                )
-            )
 
         if self.plot_settings["show_title"]:
             fig.suptitle("Linear ODE system resimulation examples")

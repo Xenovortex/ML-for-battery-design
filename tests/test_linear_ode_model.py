@@ -432,7 +432,7 @@ def test_linear_ode_system_plot_sim_data_multiple_row_plots(use_complex):
         os.rmdir("pytest")
 
 
-def test_linear_ode_system_plot_sim_data_invalid_num_plots(capsys):
+def test_linear_ode_system_plot_sim_data_negative_num_plots(capsys):
     init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
     init_data["plot_settings"]["num_plots"] = random.randint(-10, 0)
     test_object = LinearODEsystem(**init_data)
@@ -459,10 +459,16 @@ def test_linear_ode_system_plot_resimulation_one_plot(use_complex):
     init_data["plot_settings"]["show_eigen"] = True
     init_data["simulation_settings"]["use_complex_part"] = use_complex
     test_object = LinearODEsystem(**init_data)
-    n_samples = random.randint(1, 1000)
-    dummy_post_samples = np.random.uniform(
-        low=-1000, high=1000, size=(1, n_samples, test_object.num_hidden_params)
+    n_samples = random.randint(1, 100)
+    dummy_post_samples = np.empty(
+        (
+            init_data["plot_settings"]["num_plots"],
+            n_samples,
+            test_object.num_hidden_params,
+        )
     )
+    for j in range(n_samples):
+        dummy_post_samples[0, j, :] = test_object.uniform_prior()
     fig, ax, resim_data = test_object.plot_resimulation(
         dummy_post_samples, parent_folder="pytest"
     )
@@ -480,3 +486,102 @@ def test_linear_ode_system_plot_resimulation_one_plot(use_complex):
         os.remove(os.path.join("pytest", "resimulation.png"))
     if os.path.exists("pytest"):
         os.rmdir("pytest")
+
+
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_plot_resimulation_multiple_plot(use_complex):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["plot_settings"]["num_plots"] = 8
+    init_data["plot_settings"]["show_title"] = True
+    init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+    init_data["plot_settings"]["show_params"] = True
+    init_data["plot_settings"]["show_eigen"] = True
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    test_object = LinearODEsystem(**init_data)
+    n_samples = random.randint(1, 100)
+    dummy_post_samples = np.empty(
+        (
+            init_data["plot_settings"]["num_plots"],
+            n_samples,
+            test_object.num_hidden_params,
+        )
+    )
+    for i in range(init_data["plot_settings"]["num_plots"]):
+        for j in range(n_samples):
+            dummy_post_samples[i, j, :] = test_object.uniform_prior()
+
+    fig, ax, resim_data = test_object.plot_resimulation(
+        dummy_post_samples, parent_folder="pytest"
+    )
+
+    assert isinstance(fig, Figure)
+    assert isinstance(ax, np.flatiter)
+    assert isinstance(resim_data, np.ndarray)
+    assert resim_data.ndim == 4
+    assert resim_data.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert resim_data.shape[1] == n_samples
+    assert resim_data.shape[2] == test_object.max_time_iter
+    assert resim_data.shape[3] == test_object.num_features
+    assert os.path.exists(os.path.join("pytest", "resimulation.png"))
+    if os.path.exists(os.path.join("pytest", "resimulation.png")):
+        os.remove(os.path.join("pytest", "resimulation.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+
+def test_linear_ode_system_plot_resimulation_negative_num_plots(capsys):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["plot_settings"]["num_plots"] = random.randint(-10, 0)
+    test_object = LinearODEsystem(**init_data)
+    n_samples = random.randint(1, 100)
+    dummy_post_samples = np.empty(
+        (
+            8,
+            n_samples,
+            test_object.num_hidden_params,
+        )
+    )
+    for i in range(init_data["plot_settings"]["num_plots"]):
+        for j in range(n_samples):
+            dummy_post_samples[i, j, :] = test_object.uniform_prior()
+    with pytest.raises(ValueError):
+        test_object.plot_resimulation(dummy_post_samples)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - plot_resimulation: num_plots is {}, but can not be negative or zero".format(
+                test_object.__class__.__name__, init_data["plot_settings"]["num_plots"]
+            )
+        )
+
+
+def test_linear_ode_system_plot_resimulation_num_plots_larger_post_samples(capsys):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["plot_settings"]["num_plots"] = random.randint(5, 8)
+    test_object = LinearODEsystem(**init_data)
+    n_samples = random.randint(1, 100)
+    num_post_samples = random.randint(1, 4)
+    dummy_post_samples = np.empty(
+        (
+            num_post_samples,
+            n_samples,
+            test_object.num_hidden_params,
+        )
+    )
+    for i in range(num_post_samples):
+        for j in range(n_samples):
+            dummy_post_samples[i, j, :] = test_object.uniform_prior()
+    with pytest.raises(ValueError):
+        test_object.plot_resimulation(dummy_post_samples)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - plot_resimulation: num_plots is {}, but only {} post_samples given".format(
+                test_object.__class__.__name__,
+                init_data["plot_settings"]["num_plots"],
+                dummy_post_samples.shape[0],
+            )
+        )

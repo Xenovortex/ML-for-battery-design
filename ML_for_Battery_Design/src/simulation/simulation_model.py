@@ -1,9 +1,14 @@
+import os
+import pathlib
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Tuple, Type
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
+from matplotlib.figure import Figure
 
 
 class SimulationModel(ABC):
@@ -33,6 +38,7 @@ class SimulationModel(ABC):
         simulation_settings: dict,
         sample_boundaries: dict,
         default_param_values: dict,
+        plot_settings: dict,
     ) -> None:
         """Initializes parent :class:SimulationModel
 
@@ -41,11 +47,13 @@ class SimulationModel(ABC):
             simulation_settings (dict): settings for generating simulation data
             sample_boundaries (dict): sampling boundaries for each hidden parameter
             default_param_values (dict): default values of hidden parameters, if not sampled
+            plot_settings (dict): settings for plotting simulation data
         """
         self.hidden_params = hidden_params
         self.simulation_settings = simulation_settings
         self.sample_boundaries = sample_boundaries
         self.default_param_values = default_param_values
+        self.plot_settings = plot_settings
 
         # input type check
         if not isinstance(self.hidden_params, dict):
@@ -104,9 +112,9 @@ class SimulationModel(ABC):
             )
 
     @abstractmethod
-    def get_sim_data_dim(self):
+    def get_sim_data_shape(self):
         raise NotImplementedError(
-            "{}: get_sim_data_dim method is not implement".format(
+            "{}: get_sim_data_shape method is not implement".format(
                 self.__class__.__name__
             )
         )
@@ -167,7 +175,7 @@ class SimulationModel(ABC):
         print("max_time_iter: {}".format(self.max_time_iter))
         if self.is_pde:
             print("nr: {}".format(self.nr))
-        print("simulation data dimensions: {}".format(self.get_sim_data_dim()))
+        print("simulation data dimensions: {}".format(self.get_sim_data_shape()))
         print()
         print("parameter values:")
         for key, value in self.hidden_params.items():
@@ -269,8 +277,18 @@ class SimulationModel(ABC):
         prior_means, prior_stds = self.prior.estimate_means_and_stds()
         return prior_means, prior_stds
 
-
-"""
-    def generate_hdf5_data(self):
-        pass
-"""
+    def plot_prior2d(self, parent_folder: str = None) -> Type[Figure]:
+        plt.rcParams["font.size"] = self.plot_settings["font_size"]
+        fig = self.prior.plot_prior2d()
+        if self.plot_settings["show_title"]:
+            fig.suptitle("{} prior examples".format(self.__class__.__name__))
+        if parent_folder is not None:
+            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
+            save_path = os.path.join(parent_folder, "prior_2d.png")
+            fig.savefig(save_path, transparent=True, bbox_inches="tight", pad_inches=0)
+        if self.plot_settings["show_plot"]:
+            plt.show(block=True if self.plot_settings["show_time"] is None else False)
+            if self.plot_settings["show_time"] is not None:
+                time.sleep(self.plot_settings["show_time"])
+                plt.close()
+        return fig

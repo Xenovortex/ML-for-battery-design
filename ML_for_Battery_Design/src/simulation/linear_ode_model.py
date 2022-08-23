@@ -57,11 +57,14 @@ class LinearODEsystem(SimulationModel):
             plot_settings (dict): settings for plotting simulation data
         """
         super().__init__(
-            hidden_params, simulation_settings, sample_boundaries, default_param_values
+            hidden_params,
+            simulation_settings,
+            sample_boundaries,
+            default_param_values,
+            plot_settings,
         )
         self.use_complex = self.simulation_settings["use_complex_part"]
         self.num_features = 4 if self.use_complex else 2
-        self.plot_settings = plot_settings
         (
             self.prior,
             self.simulator,
@@ -69,7 +72,7 @@ class LinearODEsystem(SimulationModel):
         ) = self.get_bayesflow_generator()
         self.print_internal_settings()
 
-    def get_sim_data_dim(self) -> tuple:
+    def get_sim_data_shape(self) -> tuple:
         """Return dimensions of simulation data
 
         Returns:
@@ -151,6 +154,13 @@ class LinearODEsystem(SimulationModel):
             params (npt.NDArray[np.float32]): prior samples used to generate the plots
             sim_data (npt.NDArray[np.float32]): simulation data used to generate the plots
         """
+        if self.plot_settings["num_plots"] < 1:
+            raise ValueError(
+                "{} - plot_sim_data: num_plots is {}, but can not be negative or zero".format(
+                    self.__class__.__name__, self.plot_settings["num_plots"]
+                )
+            )
+
         plt.rcParams["font.size"] = self.plot_settings["font_size"]
 
         data_dict = self.generative_model(batch_size=self.plot_settings["num_plots"])
@@ -349,9 +359,366 @@ class LinearODEsystem(SimulationModel):
             )
 
         if self.plot_settings["show_plot"]:
-            plt.show(block=False)
+            plt.show(block=True if self.plot_settings["show_time"] is None else False)
             if self.plot_settings["show_time"] is not None:
                 time.sleep(self.plot_settings["show_time"])
                 plt.close()
 
         return fig, ax, params, sim_data
+
+    def plot_resimulation(
+        self, post_samples, parent_folder: str = None
+    ) -> Tuple[
+        Type[Figure], Union[Type[Axes], Type[np.flatiter]], npt.NDArray[np.float32]
+    ]:
+        plt.rcParams["font.size"] = self.plot_settings["font_size"]
+
+        if self.plot_settings["num_plots"] > post_samples.shape[0]:
+            raise ValueError(
+                "{} - plot_resimulation: num_plots is {}, but only {} post_samples given".format(
+                    self.__class__.__name__,
+                    self.plot_settings["num_plots"],
+                    post_samples.shape[0],
+                )
+            )
+        else:
+            post_samples = post_samples[: self.plot_settings["num_plots"]]
+
+        resim = np.empty(
+            tuple(
+                [post_samples.shape[0], post_samples.shape[1]]
+                + list(self.get_sim_data_shape())
+            ),
+            dtype=np.float32,
+        )
+
+        for i in range(post_samples.shape[0]):
+            for j in range(post_samples.shape[1]):
+                resim[i, j] = self.solver(post_samples[i, j])
+
+        n_row = int(np.ceil(self.plot_settings["num_plots"] / 6))
+        n_col = int(np.ceil(self.plot_settings["num_plots"] / n_row))
+
+        fig, ax = plt.subplots(n_row, n_col, figsize=self.plot_settings["figsize"])
+        if n_row > 1:
+            ax = ax.flat
+
+        if self.plot_settings["num_plots"] == 1:
+            ax.plot(
+                self.t,
+                np.median(resim[0, :, :, 0], axis=0),
+                label="Median u(t)",
+                color="orange",
+            )
+            u_qt_50 = np.quantile(resim[0, :, :, 0], q=[0.25, 0.75], axis=0)
+            u_qt_90 = np.quantile(resim[0, :, :, 0], q=[0.05, 0.95], axis=0)
+            u_qt_95 = np.quantile(resim[0, :, :, 0], q=[0.025, 0.975], axis=0)
+            ax.fill_between(
+                self.t,
+                u_qt_50[0],
+                u_qt_50[1],
+                color="orange",
+                alpha=0.3,
+                label="u: 50% CI",
+            )
+            ax.fill_between(
+                self.t,
+                u_qt_90[0],
+                u_qt_90[1],
+                color="orange",
+                alpha=0.2,
+                label="u: 90% CI",
+            )
+            ax.fill_between(
+                self.t,
+                u_qt_95[0],
+                u_qt_95[1],
+                color="orange",
+                alpha=0.1,
+                label="u: 95% CI",
+            )
+            ax.plot(
+                self.t,
+                np.median(resim[0, :, :, 1], axis=0),
+                label="Median v(t)",
+                color="blue",
+            )
+            v_qt_50 = np.quantile(resim[0, :, :, 1], q=[0.25, 0.75], axis=0)
+            v_qt_90 = np.quantile(resim[0, :, :, 1], q=[0.05, 0.95], axis=0)
+            v_qt_95 = np.quantile(resim[0, :, :, 1], q=[0.025, 0.975], axis=0)
+            ax.fill_between(
+                self.t,
+                v_qt_50[0],
+                v_qt_50[1],
+                color="blue",
+                alpha=0.3,
+                label="v: 50% CI",
+            )
+            ax.fill_between(
+                self.t,
+                v_qt_90[0],
+                v_qt_90[1],
+                color="blue",
+                alpha=0.2,
+                label="v: 90% CI",
+            )
+            ax.fill_between(
+                self.t,
+                v_qt_95[0],
+                v_qt_95[1],
+                color="blue",
+                alpha=0.1,
+                label="v: 95% CI",
+            )
+            if self.use_complex:
+                ax.plot(
+                    self.t,
+                    np.median(resim[0, :, :, 2], axis=0),
+                    label="Median u(t) complex part",
+                    color="orange",
+                    linestyle="--",
+                )
+                u_complex_qt_50 = np.quantile(resim[0, :, :, 2], q=[0.25, 0.75], axis=0)
+                u_complex_qt_90 = np.quantile(resim[0, :, :, 2], q=[0.05, 0.95], axis=0)
+                u_complex_qt_95 = np.quantile(
+                    resim[0, :, :, 2], q=[0.025, 0.975], axis=0
+                )
+                ax.fill_between(
+                    self.t,
+                    u_complex_qt_50[0],
+                    u_complex_qt_50[1],
+                    color="orange",
+                    alpha=0.3,
+                    label="u complex: 50% CI",
+                )
+                ax.fill_between(
+                    self.t,
+                    u_complex_qt_90[0],
+                    u_complex_qt_90[1],
+                    color="orange",
+                    alpha=0.2,
+                    label="u complex: 90% CI",
+                )
+                ax.fill_between(
+                    self.t,
+                    u_complex_qt_95[0],
+                    u_complex_qt_95[1],
+                    color="orange",
+                    alpha=0.1,
+                    label="u complex: 95% CI",
+                )
+                ax.plot(
+                    self.t,
+                    np.median(resim[0, :, :, 3], axis=0),
+                    label="Median v(t) complex part",
+                    color="blue",
+                    linestyle="--",
+                )
+                v_complex_qt_50 = np.quantile(resim[0, :, :, 3], q=[0.25, 0.75], axis=0)
+                v_complex_qt_90 = np.quantile(resim[0, :, :, 3], q=[0.05, 0.95], axis=0)
+                v_complex_qt_95 = np.quantile(
+                    resim[0, :, :, 3], q=[0.025, 0.975], axis=0
+                )
+                ax.fill_between(
+                    self.t,
+                    v_complex_qt_50[0],
+                    v_complex_qt_50[1],
+                    color="blue",
+                    alpha=0.3,
+                    label="v complex: 50% CI",
+                )
+                ax.fill_between(
+                    self.t,
+                    v_complex_qt_90[0],
+                    v_complex_qt_90[1],
+                    color="blue",
+                    alpha=0.2,
+                    label="v complex: 90% CI",
+                )
+                ax.fill_between(
+                    self.t,
+                    v_complex_qt_95[0],
+                    v_complex_qt_95[1],
+                    color="blue",
+                    alpha=0.1,
+                    label="v complex: 95% CI",
+                )
+
+            ax.set_xlabel("Time t [s]")
+            ax.set_ylabel("Function u(t)/v(t)")
+            ax.grid(True)
+            ax.legend()
+
+        elif self.plot_settings["num_plots"] > 1:
+            for i in range(self.plot_settings["num_plots"]):
+                ax[i].plot(
+                    self.t,
+                    np.median(resim[i, :, :, 0], axis=0),
+                    label="Median u(t)",
+                    color="orange",
+                )
+                u_qt_50 = np.quantile(resim[i, :, :, 0], q=[0.25, 0.75], axis=0)
+                u_qt_90 = np.quantile(resim[i, :, :, 0], q=[0.05, 0.95], axis=0)
+                u_qt_95 = np.quantile(resim[i, :, :, 0], q=[0.025, 0.975], axis=0)
+                ax[i].fill_between(
+                    self.t,
+                    u_qt_50[0],
+                    u_qt_50[1],
+                    color="orange",
+                    alpha=0.3,
+                    label="u: 50% CI",
+                )
+                ax[i].fill_between(
+                    self.t,
+                    u_qt_90[0],
+                    u_qt_90[1],
+                    color="orange",
+                    alpha=0.2,
+                    label="u: 90% CI",
+                )
+                ax[i].fill_between(
+                    self.t,
+                    u_qt_95[0],
+                    u_qt_95[1],
+                    color="orange",
+                    alpha=0.1,
+                    label="u: 95% CI",
+                )
+                ax[i].plot(
+                    self.t,
+                    np.median(resim[i, :, :, 1], axis=0),
+                    label="Median v(t)",
+                    color="blue",
+                )
+                v_qt_50 = np.quantile(resim[i, :, :, 1], q=[0.25, 0.75], axis=0)
+                v_qt_90 = np.quantile(resim[i, :, :, 1], q=[0.05, 0.95], axis=0)
+                v_qt_95 = np.quantile(resim[i, :, :, 1], q=[0.025, 0.975], axis=0)
+                ax[i].fill_between(
+                    self.t,
+                    v_qt_50[0],
+                    v_qt_50[1],
+                    color="blue",
+                    alpha=0.3,
+                    label="v: 50% CI",
+                )
+                ax[i].fill_between(
+                    self.t,
+                    v_qt_90[0],
+                    v_qt_90[1],
+                    color="blue",
+                    alpha=0.2,
+                    label="v: 90% CI",
+                )
+                ax[i].fill_between(
+                    self.t,
+                    v_qt_95[0],
+                    v_qt_95[1],
+                    color="blue",
+                    alpha=0.1,
+                    label="v: 95% CI",
+                )
+                if self.use_complex:
+                    ax[i].plot(
+                        self.t,
+                        np.median(resim[i, :, :, 2], axis=0),
+                        label="Median u(i) complex part",
+                        color="orange",
+                        linestyle="--",
+                    )
+                    u_complex_qt_50 = np.quantile(
+                        resim[i, :, :, 2], q=[0.25, 0.75], axis=0
+                    )
+                    u_complex_qt_90 = np.quantile(
+                        resim[i, :, :, 2], q=[0.05, 0.95], axis=0
+                    )
+                    u_complex_qt_95 = np.quantile(
+                        resim[i, :, :, 2], q=[0.025, 0.975], axis=0
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        u_complex_qt_50[0],
+                        u_complex_qt_50[1],
+                        color="orange",
+                        alpha=0.3,
+                        label="u complex: 50% CI",
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        u_complex_qt_90[0],
+                        u_complex_qt_90[1],
+                        color="orange",
+                        alpha=0.2,
+                        label="u complex: 90% CI",
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        u_complex_qt_95[0],
+                        u_complex_qt_95[1],
+                        color="orange",
+                        alpha=0.1,
+                        label="u complex: 95% CI",
+                    )
+                    ax[i].plot(
+                        self.t,
+                        np.median(resim[i, :, :, 3], axis=0),
+                        label="Median v(t) complex part",
+                        color="blue",
+                        linesytle="--",
+                    )
+                    v_complex_qt_50 = np.quantile(
+                        resim[i, :, :, 3], q=[0.25, 0.75], axis=0
+                    )
+                    v_complex_qt_90 = np.quantile(
+                        resim[i, :, :, 3], q=[0.05, 0.95], axis=0
+                    )
+                    v_complex_qt_95 = np.quantile(
+                        resim[i, :, :, 3], q=[0.025, 0.975], axis=0
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        v_complex_qt_50[0],
+                        v_complex_qt_50[1],
+                        color="blue",
+                        alpha=0.3,
+                        label="v complex: 50% CI",
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        v_complex_qt_90[0],
+                        v_complex_qt_90[1],
+                        color="blue",
+                        alpha=0.2,
+                        label="v complex. 90% CI",
+                    )
+                    ax[i].fill_between(
+                        self.t,
+                        v_complex_qt_95[0],
+                        v_complex_qt_95[1],
+                        color="blue",
+                        alpha=0.1,
+                        label="v complex: 95% CI",
+                    )
+
+        else:
+            raise ValueError(
+                "{} - plot_resimulation: num_plots is {}, but can not be negative or zero".format(
+                    self.__class__.__name__, self.plot_settings["num_plots"]
+                )
+            )
+
+        if self.plot_settings["show_title"]:
+            fig.suptitle("Linear ODE system resimulation examples")
+
+        plt.tight_layout()
+
+        if parent_folder is not None:
+            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
+            save_path = os.path.join(parent_folder, "resimulation.png")
+            fig.savefig(save_path, transparent=True, bbox_inches="tight", pad_inches=0)
+        if self.plot_settings["show_plot"]:
+            plt.show(block=True if self.plot_settings["show_time"] is None else False)
+            if self.plot_settings["show_time"] is not None:
+                time.sleep(self.plot_settings["show_time"])
+                plt.close()
+
+        return fig, ax, resim

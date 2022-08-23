@@ -1,11 +1,14 @@
+import os
 import random
 import string
 
 import numpy as np
 import pytest
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
+from matplotlib.figure import Figure
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
+from tests.constants import AUTO_CLOSE_PLOTS
 from tests.helpers import get_concrete_class
 
 # ------------------------------ Dummy Test Data ----------------------------- #
@@ -62,6 +65,17 @@ dummy_default_values = {}
 for name in dummy_param_names:
     dummy_default_values[name] = random.uniform(-1000, 1000)
 
+dummy_plot_settings = {
+    "num_plots": 8,
+    "figsize": (15, 10),
+    "font_size": 12,
+    "show_title": True,
+    "show_plot": True,
+    "show_time": 0 if AUTO_CLOSE_PLOTS else None,
+    "show_params": True,
+    "show_eigen": True,
+}
+
 non_dict_input = [
     random.randint(-1000, 1000),  # int
     random.uniform(-1000, 1000),  # float
@@ -88,11 +102,18 @@ def test_simulation_model_init_random_valid_input(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
+    assert isinstance(test_object.hidden_params, dict)
+    assert isinstance(test_object.simulation_settings, dict)
+    assert isinstance(test_object.sample_boundaries, dict)
+    assert isinstance(test_object.default_param_values, dict)
+    assert isinstance(test_object.plot_settings, dict)
     assert test_object.hidden_params == dummy_hidden_params
     assert test_object.simulation_settings == simulation_settings
     assert test_object.sample_boundaries == dummy_sample_boundaries
     assert test_object.default_param_values == dummy_default_values
+    assert test_object.plot_settings == dummy_plot_settings
 
 
 @pytest.mark.parametrize("non_dict_input", non_dict_input)
@@ -109,6 +130,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             simulation_settings,
             dummy_sample_boundaries,
             dummy_default_values,
+            dummy_plot_settings,
         )
         out, err = capsys.readouterr()
         assert out == ""
@@ -121,6 +143,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             non_dict_input,
             dummy_sample_boundaries,
             dummy_default_values,
+            dummy_plot_settings,
         )
         out, err = capsys.readouterr()
         assert out == ""
@@ -136,6 +159,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             simulation_settings,
             non_dict_input,
             dummy_default_values,
+            dummy_plot_settings,
         )
         out, err = capsys.readouterr()
         assert out == ""
@@ -151,6 +175,7 @@ def test_simulation_model_init_non_dict_hidden_params(
             simulation_settings,
             dummy_sample_boundaries,
             non_dict_input,
+            dummy_plot_settings,
         )
         out, err = capsys.readouterr()
         assert out == ""
@@ -168,6 +193,7 @@ def test_simulation_model_init_ode():
         dummy_ode_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     assert isinstance(test_object.dt0, float)
     assert isinstance(test_object.max_time_iter, int)
@@ -188,6 +214,7 @@ def test_simulation_model_init_pde():
         dummy_pde_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     assert isinstance(test_object.dt0, float)
     assert isinstance(test_object.max_time_iter, int)
@@ -214,6 +241,7 @@ def test_simulation_model_init_method_calls(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     assert isinstance(test_object.t, np.ndarray)
     assert isinstance(test_object.hidden_param_names, list)
@@ -235,6 +263,7 @@ def test_simulation_model_init_bayesflow_prior(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     assert isinstance(test_object.prior, Prior)
     assert isinstance(test_object.prior_means, np.ndarray)
@@ -257,6 +286,7 @@ def test_simulation_model_init_no_param_warning(simulation_settings, capsys):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     out, err = capsys.readouterr()
     assert out == "Warning: {} - No hidden parameters to sample.\n".format(
@@ -278,12 +308,13 @@ def test_simulation_model_abstract_methods(simulation_settings, capsys):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     with pytest.raises(NotImplementedError):
-        test_object.get_sim_data_dim()
+        test_object.get_sim_data_shape()
         out, err = capsys.readouterr()
         assert out == ""
-        assert err == "{}: get_sim_data_dim method is not implement".format(
+        assert err == "{}: get_sim_data_shape method is not implement".format(
             test_object.__class__.__name__
         )
     with pytest.raises(NotImplementedError):
@@ -316,6 +347,7 @@ def test_simulation_model_get_time_points_method(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     time_points = test_object.get_time_points()
     assert isinstance(time_points, np.ndarray)
@@ -334,6 +366,7 @@ def test_simulation_model_get_param_names_method(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     hidden_param_names = test_object.get_param_names()
     assert isinstance(hidden_param_names, list)
@@ -355,6 +388,7 @@ def test_simulation_model_get_default_param_kwargs_method(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     default_param_kwargs = test_object.get_default_param_kwargs()
     assert isinstance(default_param_kwargs, dict)
@@ -382,12 +416,13 @@ def test_simulation_model_print_internal_settings_method_ode(hidden_params, caps
         dummy_ode_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
 
-    def dummy_get_sim_data_dim_ode():
+    def dummy_get_sim_data_shape_ode():
         return (dummy_ode_simulation_settings["max_time_iter"], 2)
 
-    setattr(test_object, "get_sim_data_dim", dummy_get_sim_data_dim_ode)
+    setattr(test_object, "get_sim_data_shape", dummy_get_sim_data_shape_ode)
 
     expected_output = (
         80 * "#"
@@ -430,16 +465,17 @@ def test_simulation_model_print_internal_settings_method_pde(hidden_params, caps
         dummy_pde_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
 
-    def dummy_get_sim_data_dim_pde():
+    def dummy_get_sim_data_shape_pde():
         return (
             dummy_pde_simulation_settings["max_time_iter"],
             dummy_pde_simulation_settings["nr"],
             2,
         )
 
-    setattr(test_object, "get_sim_data_dim", dummy_get_sim_data_dim_pde)
+    setattr(test_object, "get_sim_data_shape", dummy_get_sim_data_shape_pde)
 
     expected_output = (
         80 * "#"
@@ -485,6 +521,7 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     dummy_sample = np.random.uniform(
         -1000, 1000, size=sum(dummy_hidden_params.values())
@@ -513,6 +550,7 @@ def test_simulation_model_reject_sampler(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
     dummy_sample = np.random.uniform(
         -1000, 1000, size=sum(dummy_hidden_params.values())
@@ -536,6 +574,7 @@ def test_simulation_model_uniform_prior_method(
         temp_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
 
     sample = test_object.uniform_prior()
@@ -558,6 +597,7 @@ def test_simulation_model_get_bayesflow_generator_ode():
         dummy_ode_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
 
     def dummy_solver(params):
@@ -590,6 +630,7 @@ def test_simulation_model_get_bayesflow_generator_pde():
         dummy_pde_simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
+        dummy_plot_settings,
     )
 
     def dummy_solver(params):
@@ -633,15 +674,7 @@ def test_simulation_model_get_prior_means_stds(simulation_settings):
         simulation_settings,
         dummy_sample_boundaries,
         dummy_default_values,
-    )
-
-    setattr(
-        test_object,
-        "prior",
-        Prior(
-            prior_fun=test_object.uniform_prior,
-            param_names=test_object.get_param_names(),
-        ),
+        dummy_plot_settings,
     )
 
     prior_means, prior_stds = test_object.get_prior_means_stds()
@@ -654,3 +687,26 @@ def test_simulation_model_get_prior_means_stds(simulation_settings):
     assert prior_stds.ndim == 2
     assert prior_stds.shape[0] == 1
     assert prior_stds.shape[1] == sum(dummy_hidden_params.values())
+
+
+@pytest.mark.parametrize(
+    "simulation_settings",
+    [dummy_ode_simulation_settings, dummy_pde_simulation_settings],
+)
+def test_simulation_model_plot_prior2d(simulation_settings):
+    test_object = get_concrete_class(SimulationModel)(
+        dummy_hidden_params,
+        simulation_settings,
+        dummy_sample_boundaries,
+        dummy_default_values,
+        dummy_plot_settings,
+    )
+
+    fig = test_object.plot_prior2d(parent_folder="pytest")
+
+    assert isinstance(fig, Figure)
+    assert os.path.exists(os.path.join("pytest", "prior_2d.png"))
+    if os.path.exists(os.path.join("pytest", "prior_2d.png")):
+        os.remove(os.path.join("pytest", "prior_2d.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")

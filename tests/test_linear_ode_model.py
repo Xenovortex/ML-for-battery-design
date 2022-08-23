@@ -71,6 +71,10 @@ def test_linear_ode_system_init(use_complex, capsys):
     data_dict = test_object.generative_model(batch_size=batch_size)
     prior_samples = data_dict["prior_draws"]
     sim_data = data_dict["sim_data"]
+    assert isinstance(test_object.hidden_params, dict)
+    assert isinstance(test_object.simulation_settings, dict)
+    assert isinstance(test_object.sample_boundaries, dict)
+    assert isinstance(test_object.default_param_values, dict)
     assert test_object.hidden_params == init_data["hidden_params"]
     assert test_object.simulation_settings == init_data["simulation_settings"]
     assert test_object.sample_boundaries == init_data["sample_boundaries"]
@@ -101,6 +105,7 @@ def test_linear_ode_system_init(use_complex, capsys):
         assert test_object.num_features == 4
     else:
         assert test_object.num_features == 2
+    assert isinstance(test_object.plot_settings, dict)
     assert test_object.plot_settings == init_data["plot_settings"]
     assert isinstance(test_object.prior, Prior)
     assert isinstance(test_object.simulator, Simulator)
@@ -319,11 +324,11 @@ def test_linear_ode_system_get_prior_means_stds():
 
 
 @pytest.mark.parametrize("use_complex", [True, False])
-def test_linear_ode_system_get_sim_data_sim_method(use_complex):
+def test_linear_ode_system_get_sim_data_shape_method(use_complex):
     init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
     init_data["simulation_settings"]["use_complex_part"] = use_complex
     test_object = LinearODEsystem(**init_data)
-    sim_data_dim = test_object.get_sim_data_dim()
+    sim_data_dim = test_object.get_sim_data_shape()
     assert isinstance(sim_data_dim, tuple)
     assert len(sim_data_dim) == 2
     assert (
@@ -354,7 +359,7 @@ def test_linear_ode_system_solver_method(use_complex):
     solution = test_object.solver(params)
     assert isinstance(solution, np.ndarray)
     assert solution.dtype == np.float32
-    assert solution.shape == test_object.get_sim_data_dim()
+    assert solution.shape == test_object.get_sim_data_shape()
     assert np.all(np.isfinite(solution))
 
 
@@ -423,5 +428,55 @@ def test_linear_ode_system_plot_sim_data_multiple_row_plots(use_complex):
     assert os.path.exists(os.path.join("pytest", "sim_data.png"))
     if os.path.exists(os.path.join("pytest", "sim_data.png")):
         os.remove(os.path.join("pytest", "sim_data.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+
+def test_linear_ode_system_plot_sim_data_invalid_num_plots(capsys):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["plot_settings"]["num_plots"] = random.randint(-10, 0)
+    test_object = LinearODEsystem(**init_data)
+    with pytest.raises(ValueError):
+        test_object.plot_sim_data()
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - plot_sim_data: num_plots is {}, but can not be negative or zero".format(
+                test_object.__class__.__name__, init_data["plot_settings"]["num_plots"]
+            )
+        )
+
+
+@pytest.mark.parametrize("use_complex", [True, False])
+def test_linear_ode_system_plot_resimulation_one_plot(use_complex):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["plot_settings"]["num_plots"] = 1
+    init_data["plot_settings"]["show_title"] = True
+    init_data["plot_settings"]["show_plot"] = True
+    init_data["plot_settings"]["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+    init_data["plot_settings"]["show_params"] = True
+    init_data["plot_settings"]["show_eigen"] = True
+    init_data["simulation_settings"]["use_complex_part"] = use_complex
+    test_object = LinearODEsystem(**init_data)
+    n_samples = random.randint(1, 1000)
+    dummy_post_samples = np.random.uniform(
+        low=-1000, high=1000, size=(1, n_samples, test_object.num_hidden_params)
+    )
+    fig, ax, resim_data = test_object.plot_resimulation(
+        dummy_post_samples, parent_folder="pytest"
+    )
+
+    assert isinstance(fig, Figure)
+    assert isinstance(ax, Axes)
+    assert isinstance(resim_data, np.ndarray)
+    assert resim_data.ndim == 4
+    assert resim_data.shape[0] == init_data["plot_settings"]["num_plots"]
+    assert resim_data.shape[1] == n_samples
+    assert resim_data.shape[2] == test_object.max_time_iter
+    assert resim_data.shape[3] == test_object.num_features
+    assert os.path.exists(os.path.join("pytest", "resimulation.png"))
+    if os.path.exists(os.path.join("pytest", "resimulation.png")):
+        os.remove(os.path.join("pytest", "resimulation.png"))
     if os.path.exists("pytest"):
         os.rmdir("pytest")

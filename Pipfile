@@ -12,6 +12,7 @@ sklearn = "*"
 pandas = "*"
 seaborn = "*"
 tabulate = "*"
+tqdm = "*"
 
 [dev-packages]
 black = "*"

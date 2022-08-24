@@ -290,5 +290,5 @@ class SimulationModel(ABC):
             plt.show(block=True if self.plot_settings["show_time"] is None else False)
             if self.plot_settings["show_time"] is not None:
                 time.sleep(self.plot_settings["show_time"])
-                plt.close()
+            plt.close()
         return fig

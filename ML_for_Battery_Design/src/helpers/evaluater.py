@@ -6,7 +6,7 @@ from typing import Callable, Type, Union
 
 import bayesflow.diagnostics as diag
 import matplotlib.pyplot as plt
-from bayesflow.amortized_inference import ArmotizedPosterior
+from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.trainers import Trainer
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
@@ -16,7 +16,7 @@ class Evaluater:
     def __init__(
         self,
         sim_model: Type[SimulationModel],
-        amortizer: Type[ArmotizedPosterior],
+        amortizer: Type[AmortizedPosterior],
         trainer: Type[Trainer],
         plot_settings: dict,
         evaluation_settings: dict,
@@ -90,7 +90,7 @@ class Evaluater:
             plt.show(block=True if self.plot_settings["show_time"] is None else False)
             if self.plot_settings["show_time"] is not None:
                 time.sleep(self.plot_settings["show_time"])
-                plt.close()
+            plt.close()
 
     def generate_test_data(self, batch_size: int = 300, n_samples: int = 100) -> dict:
         test_data_raw = self.sim_model.generative_model(batch_size=batch_size)

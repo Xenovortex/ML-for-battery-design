@@ -58,6 +58,9 @@ LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS = {
 #                             Architecture Settings                            #
 # ---------------------------------------------------------------------------- #
 
+LINAER_ODE_SYSTEM_FC_ARCHITECTURE = MetaDictSetting(
+    meta_dict={"units": [32, 32, 32], "activation": "relu", "summary_dim": 32}
+)
 
 LINAER_ODE_SYSTEM_LSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
@@ -73,6 +76,7 @@ LINEAR_ODE_SYSTEM_INN_ARCHITECTURE = {
 }
 
 LINEAR_ODE_SYSTEM_ARCHITECTURES = {
+    "FC": LINAER_ODE_SYSTEM_FC_ARCHITECTURE,
     "LSTM": LINAER_ODE_SYSTEM_LSTM_ARCHITECTURE,
     "INN": LINEAR_ODE_SYSTEM_INN_ARCHITECTURE,
 }
@@ -83,7 +87,7 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 # ---------------------------------------------------------------------------- #
 
 
-LINEAR_ODE_SYSTEM_TRAINING_SETTINGS: dict = {
+LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
     "lr": PiecewiseConstantDecay(
         [50000, 100000, 150000], [0.001, 0.0001, 0.00001, 0.000001]
     )
@@ -93,12 +97,26 @@ LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
     "norm_prior": True,
     "norm_sim_data": "log_norm",
     "remove_nan": True,
+    "float32_cast": True,
 }
 
 
 LINEAR_ODE_SYSTEM_HDF5_SETTINGS = {"total_n_sim": 1024000, "chunk_size": 10240}
 
-LINEAR_ODE_SYSTEM_EVALUATION_SETTINGS: dict = {}
+LINEAR_ODE_SYSTEM_EVALUATION_SETTINGS = {
+    "batch_size": 300,
+    "n_samples": 100,
+    "plot_prior": True,
+    "plot_sim_data": True,
+    "plot_loss": True,
+    "plot_latent": True,
+    "plot_sbc_histogram": True,
+    "plot_sbc_ecdf": True,
+    "plot_true_vs_estimated": True,
+    "plot_posterior": True,
+    "plot_post_with_prior": True,
+    "plot_resimulation": True,
+}
 
 LINEAR_ODE_SYSTEM_INFERENCE_SETTINGS = {
     "processing": LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS,

@@ -1,7 +1,8 @@
 import os
 import pathlib
+import pickle
 import time
-from typing import Callable, Type
+from typing import Callable, Type, Union
 
 import bayesflow.diagnostics as diag
 import matplotlib.pyplot as plt
@@ -25,6 +26,7 @@ class Evaluater:
         self.trainer = trainer
         self.plot_settings = plot_settings
         self.eval_settings = evaluation_settings
+        self.losses: Union[dict, str]
 
         self.test_dict = self.generate_test_data(
             self.eval_settings["batch_size"], self.eval_settings["n_samples"]
@@ -38,6 +40,19 @@ class Evaluater:
         if self.eval_settings["plot_sim_data"]:
             print("Plotting simulation data ...")
             self.sim_model.plot_sim_data(parent_folder)
+
+    def load_losses(self, losses: Union[dict, str]) -> None:
+        if isinstance(losses, dict):
+            self.losses = losses
+        elif isinstance(losses, str):
+            with open(losses, "rb") as file:
+                self.losses = pickle.load(file)
+        else:
+            raise TypeError(
+                "{} - load_losses: argument losses is {}, but has to be string or dict".format(
+                    self.__class__.__name__, type(losses)
+                )
+            )
 
     def plot_wrapper(
         self,
@@ -95,8 +110,12 @@ class Evaluater:
         return test_dict
 
     def evaluate_bayesflow_model(self, parent_folder: str = None) -> None:
-        if self.eval_settings["plot_losses"]:
-            pass
+        if self.eval_settings["plot_loss"]:
+            print("Plotting training loss...")
+            kwargs = {"history": self.losses}
+            self.plot_wrapper(
+                diag.plot_losses, parent_folder, "training loss", "loss.png", **kwargs
+            )
 
         if self.eval_settings["plot_latent"]:
             print("Plotting latent space...")
@@ -176,4 +195,9 @@ class Evaluater:
             )
 
         if self.eval_settings["plot_resimulation"]:
-            pass
+            print("Ploting resimulation...")
+            self.sim_model.plot_resimulation(
+                self.test_dict["posterior_samples_unnorm"],
+                self.test_dict["test_data_raw"],
+                parent_folder,
+            )

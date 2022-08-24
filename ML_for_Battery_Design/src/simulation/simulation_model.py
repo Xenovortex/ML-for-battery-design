@@ -218,11 +218,11 @@ class SimulationModel(ABC):
         """
         return False
 
-    def uniform_prior(self) -> npt.NDArray[np.float32]:
+    def uniform_prior(self) -> npt.NDArray[Any]:
         """Generate samples from uniform prior
 
         Returns:
-            sample (npt.NDArray[np.float32]): uniform prior sample
+            sample (npt.NDArray[Any]): uniform prior sample
         """
         lower_boundary = []
         upper_boundary = []
@@ -248,7 +248,7 @@ class SimulationModel(ABC):
                 size=len(self.hidden_param_names),
             )
 
-        return sample.astype(np.float32)
+        return sample
 
     def get_bayesflow_generator(
         self,

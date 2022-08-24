@@ -111,6 +111,10 @@ class Processing:
             params = params[keep_idx]
             sim_data = sim_data[keep_idx]
 
+        if self.settings["float32_cast"]:
+            params = params.astype(np.float32)
+            sim_data = sim_data.astype(np.float32)
+
         out_dict["parameters"] = params
         out_dict["summary_conditions"] = sim_data
 

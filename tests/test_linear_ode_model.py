@@ -2,11 +2,11 @@ import os
 import random
 
 import numpy as np
-import pytest
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
+import pytest
 from ML_for_Battery_Design.src.settings.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS,
 )
@@ -233,7 +233,7 @@ def test_linear_ode_system_sample_to_kwargs_method():
         -1000,
         1000,
         size=sum(LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS["hidden_params"].values()),
-    ).astype(np.float32)
+    )
     test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS)
     param_kwargs = test_object.sample_to_kwargs(dummy_sample)
     assert isinstance(param_kwargs, dict)
@@ -260,7 +260,6 @@ def test_linear_ode_system_uniform_prior_method():
     sample = test_object.uniform_prior()
 
     assert isinstance(sample, np.ndarray)
-    assert sample.dtype == np.float32
     assert sample.ndim == 1
     assert sample.shape[0] == sum(
         LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS["hidden_params"].values()
@@ -358,7 +357,6 @@ def test_linear_ode_system_solver_method(use_complex):
     params = test_object.uniform_prior()
     solution = test_object.solver(params)
     assert isinstance(solution, np.ndarray)
-    assert solution.dtype == np.float32
     assert solution.shape == test_object.get_sim_data_shape()
     assert np.all(np.isfinite(solution))
 
@@ -469,8 +467,17 @@ def test_linear_ode_system_plot_resimulation_one_plot(use_complex):
     )
     for j in range(n_samples):
         dummy_post_samples[0, j, :] = test_object.uniform_prior()
+    dummy_resimulation = np.empty(
+        tuple(
+            [init_data["plot_settings"]["num_plots"], n_samples]
+            + list(test_object.get_sim_data_shape())
+        )
+    )
+    for j in range(n_samples):
+        dummy_resimulation[0, j] = test_object.solver(dummy_post_samples[0, j, :])
+    dummy_ground_truth = np.median(dummy_resimulation, axis=1)
     fig, ax, resim_data = test_object.plot_resimulation(
-        dummy_post_samples, parent_folder="pytest"
+        dummy_post_samples, dummy_ground_truth, parent_folder="pytest"
     )
 
     assert isinstance(fig, Figure)
@@ -510,9 +517,19 @@ def test_linear_ode_system_plot_resimulation_multiple_plot(use_complex):
     for i in range(init_data["plot_settings"]["num_plots"]):
         for j in range(n_samples):
             dummy_post_samples[i, j, :] = test_object.uniform_prior()
+    dummy_resimulation = np.empty(
+        tuple(
+            [init_data["plot_settings"]["num_plots"], n_samples]
+            + list(test_object.get_sim_data_shape())
+        )
+    )
+    for i in range(init_data["plot_settings"]["num_plots"]):
+        for j in range(n_samples):
+            dummy_resimulation[i, j] = test_object.solver(dummy_post_samples[i, j, :])
+    dummy_ground_truth = np.median(dummy_resimulation, axis=1)
 
     fig, ax, resim_data = test_object.plot_resimulation(
-        dummy_post_samples, parent_folder="pytest"
+        dummy_post_samples, dummy_ground_truth, parent_folder="pytest"
     )
 
     assert isinstance(fig, Figure)
@@ -535,9 +552,10 @@ def test_linear_ode_system_plot_resimulation_negative_num_plots(capsys):
     init_data["plot_settings"]["num_plots"] = random.randint(-10, 0)
     test_object = LinearODEsystem(**init_data)
     n_samples = random.randint(1, 100)
+    num_post_samples = random.randint(1, 4)
     dummy_post_samples = np.empty(
         (
-            8,
+            num_post_samples,
             n_samples,
             test_object.num_hidden_params,
         )
@@ -545,8 +563,13 @@ def test_linear_ode_system_plot_resimulation_negative_num_plots(capsys):
     for i in range(init_data["plot_settings"]["num_plots"]):
         for j in range(n_samples):
             dummy_post_samples[i, j, :] = test_object.uniform_prior()
+    dummy_ground_truth = np.random.uniform(
+        -1000,
+        1000,
+        size=tuple([num_post_samples] + list(test_object.get_sim_data_shape())),
+    )
     with pytest.raises(ValueError):
-        test_object.plot_resimulation(dummy_post_samples)
+        test_object.plot_resimulation(dummy_post_samples, dummy_ground_truth)
         out, err = capsys.readouterr()
         assert out == ""
         assert (
@@ -573,8 +596,13 @@ def test_linear_ode_system_plot_resimulation_num_plots_larger_post_samples(capsy
     for i in range(num_post_samples):
         for j in range(n_samples):
             dummy_post_samples[i, j, :] = test_object.uniform_prior()
+    dummy_ground_truth = np.random.uniform(
+        -1000,
+        1000,
+        size=tuple([num_post_samples] + list(test_object.get_sim_data_shape())),
+    )
     with pytest.raises(ValueError):
-        test_object.plot_resimulation(dummy_post_samples)
+        test_object.plot_resimulation(dummy_post_samples, dummy_ground_truth)
         out, err = capsys.readouterr()
         assert out == ""
         assert (

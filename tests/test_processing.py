@@ -2,8 +2,8 @@ import random
 import string
 
 import numpy as np
-import pytest
 
+import pytest
 from ML_for_Battery_Design.src.helpers.constants import (
     inference_settings,
     sim_model_collection,
@@ -327,6 +327,7 @@ def test_processing_call_norm_prior(model_name):
         "norm_prior": True,
         "norm_sim_data": None,
         "remove_nan": False,
+        "float32_cast": False,
     }
 
     test_object = sim_model_collection[model_name](**simulation_settings[model_name])
@@ -339,6 +340,7 @@ def test_processing_call_norm_prior(model_name):
 
     out_dict = configurator(data_dict)
 
+    assert isinstance(out_dict, dict)
     assert isinstance(configurator.settings, dict)
     assert isinstance(configurator.prior_means, np.ndarray)
     assert isinstance(configurator.prior_stds, np.ndarray)
@@ -378,6 +380,7 @@ def test_processing_call_norm_sim_data_log(model_name):
         "norm_prior": False,
         "norm_sim_data": "log_norm",
         "remove_nan": False,
+        "float32_cast": False,
     }
 
     test_object = sim_model_collection[model_name](**simulation_settings[model_name])
@@ -388,6 +391,7 @@ def test_processing_call_norm_sim_data_log(model_name):
 
     out_dict = configurator(data_dict)
 
+    assert isinstance(out_dict, dict)
     assert isinstance(configurator.settings, dict)
     assert configurator.settings == processing_settings
     assert configurator.prior_means is None
@@ -420,6 +424,7 @@ def test_processing_call_norm_sim_data_mean_std(model_name):
         "norm_prior": False,
         "norm_sim_data": "mean_std",
         "remove_nan": False,
+        "float32_cast": False,
     }
 
     test_object = sim_model_collection[model_name](**simulation_settings[model_name])
@@ -434,6 +439,7 @@ def test_processing_call_norm_sim_data_mean_std(model_name):
 
     out_dict = configurator(data_dict)
 
+    assert isinstance(out_dict, dict)
     assert isinstance(configurator.settings, dict)
     assert isinstance(configurator.sim_data_means, np.ndarray)
     assert isinstance(configurator.sim_data_stds, np.ndarray)
@@ -489,6 +495,7 @@ def test_processing_call_remove_nan(model_name):
         "norm_prior": False,
         "norm_sim_data": None,
         "remove_nan": True,
+        "float32_cast": False,
     }
 
     test_object = sim_model_collection[model_name](**simulation_settings[model_name])
@@ -503,6 +510,7 @@ def test_processing_call_remove_nan(model_name):
 
     out_dict = configurator(data_dict)
 
+    assert isinstance(out_dict, dict)
     assert isinstance(configurator.settings, dict)
     assert configurator.settings == processing_settings
     assert configurator.prior_means is None
@@ -521,6 +529,46 @@ def test_processing_call_remove_nan(model_name):
         assert out_dict["summary_conditions"].ndim == 3
         assert out_dict["summary_conditions"].shape[2] == test_object.num_features
     assert not np.any(np.isnan(out_dict["summary_conditions"]))
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_processing_call_float32_cast(model_name):
+    processing_settings = {
+        "norm_prior": False,
+        "norm_sim_data": None,
+        "remove_nan": False,
+        "float32_cast": True,
+    }
+
+    test_object = sim_model_collection[model_name](**simulation_settings[model_name])
+    batch_size = random.randint(1, 8)
+    data_dict = test_object.generative_model(batch_size=batch_size)
+
+    configurator = Processing(processing_settings)
+
+    out_dict = configurator(data_dict)
+
+    assert isinstance(out_dict, dict)
+    assert isinstance(configurator.settings, dict)
+    assert configurator.settings == processing_settings
+    assert configurator.prior_means is None
+    assert configurator.prior_stds is None
+    assert configurator.sim_data_means is None
+    assert configurator.sim_data_stds is None
+    assert out_dict["parameters"].ndim == 2
+    assert out_dict["parameters"].shape[0] == batch_size
+    assert out_dict["parameters"].shape[1] == test_object.num_hidden_params
+    assert out_dict["summary_conditions"].shape[0] == batch_size
+    assert out_dict["summary_conditions"].shape[1] == test_object.max_time_iter
+    if test_object.is_pde:
+        assert out_dict["summary_conditions"].ndim == 4
+        assert out_dict["summary_conditions"].shape[2] == test_object.nr
+        assert out_dict["summary_conditions"].shape[3] == test_object.num_features
+    else:
+        assert out_dict["summary_conditions"].ndim == 3
+        assert out_dict["summary_conditions"].shape[2] == test_object.num_features
+    assert out_dict["parameters"].dtype == np.float32
+    assert out_dict["summary_conditions"].dtype == np.float32
 
 
 @pytest.mark.parametrize("model_name", models)

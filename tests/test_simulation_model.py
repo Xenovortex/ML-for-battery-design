@@ -3,10 +3,10 @@ import random
 import string
 
 import numpy as np
-import pytest
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 from matplotlib.figure import Figure
 
+import pytest
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 from tests.constants import AUTO_CLOSE_PLOTS
 from tests.helpers import get_concrete_class
@@ -525,7 +525,7 @@ def test_simulation_model_sample_to_kwargs_method(simulation_settings):
     )
     dummy_sample = np.random.uniform(
         -1000, 1000, size=sum(dummy_hidden_params.values())
-    ).astype(np.float32)
+    )
     param_kwargs = test_object.sample_to_kwargs(dummy_sample)
     assert isinstance(param_kwargs, dict)
     assert len(param_kwargs) == len(dummy_hidden_params)
@@ -554,7 +554,7 @@ def test_simulation_model_reject_sampler(simulation_settings):
     )
     dummy_sample = np.random.uniform(
         -1000, 1000, size=sum(dummy_hidden_params.values())
-    ).astype(np.float32)
+    )
     assert isinstance(test_object.reject_sampler(dummy_sample), bool)
     assert not test_object.reject_sampler(dummy_sample)
 
@@ -580,7 +580,6 @@ def test_simulation_model_uniform_prior_method(
     sample = test_object.uniform_prior()
 
     assert isinstance(sample, np.ndarray)
-    assert sample.dtype == np.float32
     assert sample.ndim == 1
     assert sample.shape[0] == sum(dummy_hidden_params.values())
     counter = 0

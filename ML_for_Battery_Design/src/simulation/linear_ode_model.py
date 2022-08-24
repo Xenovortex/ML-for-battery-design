@@ -1,7 +1,7 @@
 import os
 import pathlib
 import time
-from typing import Tuple, Type, Union
+from typing import Any, Tuple, Type, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,11 +81,11 @@ class LinearODEsystem(SimulationModel):
         sim_data_dim = (self.max_time_iter, self.num_features)
         return sim_data_dim
 
-    def reject_sampler(self, sample: npt.NDArray[np.float64]) -> bool:
+    def reject_sampler(self, sample: npt.NDArray[Any]) -> bool:
         """Reject sample if it will lead to unstable solutions
 
         Args:
-            sample (npt.NDArray[np.float64]): uniform prior sample
+            sample (npt.NDArray[Any]): uniform prior sample
 
         Returns:
             bool: If sample should be rejected or not
@@ -103,14 +103,14 @@ class LinearODEsystem(SimulationModel):
         else:
             return False
 
-    def solver(self, params: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    def solver(self, params: npt.NDArray[Any]) -> npt.NDArray[Any]:
         """Returns analytical solutions u and v of linear ODE system
 
         Args:
-           params (npt.NDArray[np.float32]): hidden prior paramters
+           params (npt.NDArray[Any]): hidden prior paramters
 
         Returns:
-            solution (npt.NDArray[np.float32]): ODE solutions of size (time points, 4) with entries (u(t).real, v(t).real, u(t).imag, v(t).imag) at each time point t
+            solution (npt.NDArray[Any]): ODE solutions of size (time points, 4) with entries (u(t).real, v(t).real, u(t).imag, v(t).imag) at each time point t
         """
         param_kwargs = self.sample_to_kwargs(params)
         A = np.array(
@@ -132,7 +132,7 @@ class LinearODEsystem(SimulationModel):
             solution = np.concatenate((solution.T.real, solution.T.imag), axis=1)
         else:
             solution = solution.T.real
-        return solution.astype(np.float32)
+        return solution
 
     def plot_sim_data(
         self,
@@ -140,8 +140,8 @@ class LinearODEsystem(SimulationModel):
     ) -> Tuple[
         Type[Figure],
         Union[Type[Axes], Type[np.flatiter]],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float32],
+        npt.NDArray[Any],
+        npt.NDArray[Any],
     ]:
         """Generate simulation data plots
 
@@ -151,8 +151,8 @@ class LinearODEsystem(SimulationModel):
         Returns:
             fig (plt.Figure) : matplotlib Figure instance for external access
             ax (plt.Axes) : matplotlib Axes instance for external access
-            params (npt.NDArray[np.float32]): prior samples used to generate the plots
-            sim_data (npt.NDArray[np.float32]): simulation data used to generate the plots
+            params (npt.NDArray[Any]): prior samples used to generate the plots
+            sim_data (npt.NDArray[Any]): simulation data used to generate the plots
         """
         if self.plot_settings["num_plots"] < 1:
             raise ValueError(
@@ -367,10 +367,11 @@ class LinearODEsystem(SimulationModel):
         return fig, ax, params, sim_data
 
     def plot_resimulation(
-        self, post_samples, parent_folder: str = None
-    ) -> Tuple[
-        Type[Figure], Union[Type[Axes], Type[np.flatiter]], npt.NDArray[np.float32]
-    ]:
+        self,
+        post_samples: npt.NDArray[Any],
+        ground_truths: npt.NDArray[Any],
+        parent_folder: str = None,
+    ) -> Tuple[Type[Figure], Union[Type[Axes], Type[np.flatiter]], npt.NDArray[Any]]:
         plt.rcParams["font.size"] = self.plot_settings["font_size"]
 
         if self.plot_settings["num_plots"] < 1:
@@ -395,8 +396,7 @@ class LinearODEsystem(SimulationModel):
             tuple(
                 [post_samples.shape[0], post_samples.shape[1]]
                 + list(self.get_sim_data_shape())
-            ),
-            dtype=np.float32,
+            )
         )
 
         for i in range(post_samples.shape[0]):
@@ -414,8 +414,17 @@ class LinearODEsystem(SimulationModel):
             ax.plot(
                 self.t,
                 np.median(resim[0, :, :, 0], axis=0),
-                label="Median u(t)",
+                label="Median u(t) real",
                 color="orange",
+            )
+            ax.plot(
+                self.t,
+                ground_truths[0, :, 0],
+                marker="o",
+                label="Ground truth u(t) real",
+                color="k",
+                linestyle="--",
+                alpha=0.8,
             )
             u_qt_50 = np.quantile(resim[0, :, :, 0], q=[0.25, 0.75], axis=0)
             u_qt_90 = np.quantile(resim[0, :, :, 0], q=[0.05, 0.95], axis=0)
@@ -447,8 +456,17 @@ class LinearODEsystem(SimulationModel):
             ax.plot(
                 self.t,
                 np.median(resim[0, :, :, 1], axis=0),
-                label="Median v(t)",
+                label="Median v(t) real",
                 color="blue",
+            )
+            ax.plot(
+                self.t,
+                ground_truths[0, :, 1],
+                marker="o",
+                label="Ground truth v(t) real",
+                color="k",
+                linestyle="--",
+                alpha=0.8,
             )
             v_qt_50 = np.quantile(resim[0, :, :, 1], q=[0.25, 0.75], axis=0)
             v_qt_90 = np.quantile(resim[0, :, :, 1], q=[0.05, 0.95], axis=0)
@@ -481,9 +499,17 @@ class LinearODEsystem(SimulationModel):
                 ax.plot(
                     self.t,
                     np.median(resim[0, :, :, 2], axis=0),
-                    label="Median u(t) complex part",
+                    label="Median u(t) complex",
                     color="orange",
                     linestyle="--",
+                )
+                ax.plot(
+                    self.t,
+                    ground_truths[0, :, 2],
+                    label="Ground truth u(t) complex",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
                 )
                 u_complex_qt_50 = np.quantile(resim[0, :, :, 2], q=[0.25, 0.75], axis=0)
                 u_complex_qt_90 = np.quantile(resim[0, :, :, 2], q=[0.05, 0.95], axis=0)
@@ -517,9 +543,17 @@ class LinearODEsystem(SimulationModel):
                 ax.plot(
                     self.t,
                     np.median(resim[0, :, :, 3], axis=0),
-                    label="Median v(t) complex part",
+                    label="Median v(t) complex",
                     color="blue",
                     linestyle="--",
+                )
+                ax.plot(
+                    self.t,
+                    ground_truths[0, :, 3],
+                    label="Ground truth v(t) complex",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
                 )
                 v_complex_qt_50 = np.quantile(resim[0, :, :, 3], q=[0.25, 0.75], axis=0)
                 v_complex_qt_90 = np.quantile(resim[0, :, :, 3], q=[0.05, 0.95], axis=0)
@@ -561,8 +595,17 @@ class LinearODEsystem(SimulationModel):
                 ax[i].plot(
                     self.t,
                     np.median(resim[i, :, :, 0], axis=0),
-                    label="Median u(t)",
+                    label="Median u(t) real",
                     color="orange",
+                )
+                ax[i].plot(
+                    self.t,
+                    ground_truths[i, :, 0],
+                    marker="o",
+                    label="Ground truth u(t) real",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
                 )
                 u_qt_50 = np.quantile(resim[i, :, :, 0], q=[0.25, 0.75], axis=0)
                 u_qt_90 = np.quantile(resim[i, :, :, 0], q=[0.05, 0.95], axis=0)
@@ -594,8 +637,17 @@ class LinearODEsystem(SimulationModel):
                 ax[i].plot(
                     self.t,
                     np.median(resim[i, :, :, 1], axis=0),
-                    label="Median v(t)",
+                    label="Median v(t) real",
                     color="blue",
+                )
+                ax[i].plot(
+                    self.t,
+                    ground_truths[i, :, 1],
+                    marker="o",
+                    label="Ground truth v(t) real",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
                 )
                 v_qt_50 = np.quantile(resim[i, :, :, 1], q=[0.25, 0.75], axis=0)
                 v_qt_90 = np.quantile(resim[i, :, :, 1], q=[0.05, 0.95], axis=0)
@@ -628,9 +680,18 @@ class LinearODEsystem(SimulationModel):
                     ax[i].plot(
                         self.t,
                         np.median(resim[i, :, :, 2], axis=0),
-                        label="Median u(i) complex part",
+                        label="Median u(t) complex",
                         color="orange",
                         linestyle="--",
+                    )
+                    ax[i].plot(
+                        self.t,
+                        ground_truths[i, :, 2],
+                        marker="o",
+                        label="Ground truth u(t) complex",
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
                     )
                     u_complex_qt_50 = np.quantile(
                         resim[i, :, :, 2], q=[0.25, 0.75], axis=0
@@ -668,9 +729,18 @@ class LinearODEsystem(SimulationModel):
                     ax[i].plot(
                         self.t,
                         np.median(resim[i, :, :, 3], axis=0),
-                        label="Median v(t) complex part",
+                        label="Median v(t) complex",
                         color="blue",
                         linestyle="--",
+                    )
+                    ax[i].plot(
+                        self.t,
+                        ground_truths[0, :, 3],
+                        marker="o",
+                        label="Ground truth v(t) complex",
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
                     )
                     v_complex_qt_50 = np.quantile(
                         resim[i, :, :, 3], q=[0.25, 0.75], axis=0
@@ -695,7 +765,7 @@ class LinearODEsystem(SimulationModel):
                         v_complex_qt_90[1],
                         color="blue",
                         alpha=0.2,
-                        label="v complex. 90% CI",
+                        label="v complex: 90% CI",
                     )
                     ax[i].fill_between(
                         self.t,
@@ -705,9 +775,14 @@ class LinearODEsystem(SimulationModel):
                         alpha=0.1,
                         label="v complex: 95% CI",
                     )
+                ax[i].set_xlabel("Time[s]")
+                ax[i].set_ylabel("Function u(t)/v(t)")
+                ax[i].grid(True)
+                handles, labels = ax[i].get_legend_handles_labels()
+            fig.legend(handles, labels)
 
         if self.plot_settings["show_title"]:
-            fig.suptitle("Linear ODE system resimulation examples")
+            fig.suptitle("Linear ODE system resimulation")
 
         plt.tight_layout()
 

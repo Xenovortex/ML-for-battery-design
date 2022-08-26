@@ -95,7 +95,7 @@ LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
 
 LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
     "norm_prior": True,
-    "norm_sim_data": "log_norm",
+    "norm_sim_data": None,
     "remove_nan": True,
     "float32_cast": True,
 }

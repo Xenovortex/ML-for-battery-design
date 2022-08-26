@@ -26,8 +26,8 @@ mkdocs = "*"
 mkdocstrings = {extras = ["python"], version = "*"}
 mkdocs-material = "*"
 mkgendocs = "*"
-pytest-subtests = "*"
 parameterized = "*"
+jupyter = "*"
 
 [scripts]
 main = "pipenv run python ./ML_for_Battery_Design/src/main.py"

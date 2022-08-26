@@ -23,6 +23,7 @@ class LinearODEsystem(SimulationModel):
         simulation_settings (dict): settings for generating simulation data
         sample_boundaries (dict): sampling boundaries for each hidden parameter
         default_param_values (dict): default values of hidden parameters, if not sampled
+        plot_settings (dict): settings for plotting simulation data
         dt0 (float): time step size for discretization in time direction
         max_time_iter (int): number of iterations after which the simulation stops
         nr (int): number of discretization points in space dimension (only for PDE)
@@ -30,7 +31,9 @@ class LinearODEsystem(SimulationModel):
         is_pde (bool): if the simulation model is described by PDEs or ODEs
         t (npt.NDArray[Any]): time points at which the solutions should be evaluated
         hidden_param_names (list): list of hidden parameter names
+        num_hidden_params (int): number of hidden parameters
         default_param_kwargs (dict): not-sampled parameters default values as keyword arguments
+        use_complex (bool): If True, consider complex part of simulation data
         num_features (int): number of features in simulation data per time point
         prior (bayesflow.Prior): prior sample generator wrapped in bayesflow Prior object
         simulator (bayesflow.Simulator): simulation data generator wrapped in bayesflow Simulator object

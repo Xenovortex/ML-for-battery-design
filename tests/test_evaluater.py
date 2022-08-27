@@ -3,12 +3,12 @@ import random
 
 import numpy as np
 import pandas as pd
-import pytest
 from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.helper_functions import build_meta_dict
 from bayesflow.networks import InvertibleNetwork
 from bayesflow.trainers import Trainer
 
+import pytest
 from ML_for_Battery_Design.src.helpers.constants import (
     architecture_settings,
     inference_settings,
@@ -246,7 +246,7 @@ def test_evaluater_generate_test_data(model_name):
     sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(
         model_name, remove_nan=False
     )
-    batch_size = random.randint(1, 8)
+    batch_size = random.randint(2, 8)
     n_samples = random.randint(2, 8)
 
     evaluater = Evaluater(
@@ -490,7 +490,7 @@ def test_evaluater_evaluate_bayesflow_model_plot_true_vs_estimated(model_name):
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
 
     dummy_eval_settings = {
-        "batch_size": random.randint(1, 8),
+        "batch_size": random.randint(2, 8),
         "n_samples": random.randint(2, 8),
         "plot_prior": False,
         "plot_sim_data": False,
@@ -529,7 +529,7 @@ def test_evaluater_evaluate_bayesflow_model_plot_posterior(model_name):
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
 
     dummy_eval_settings = {
-        "batch_size": random.randint(1, 8),
+        "batch_size": random.randint(2, 8),
         "n_samples": random.randint(2, 8),
         "plot_prior": False,
         "plot_sim_data": False,

@@ -19,6 +19,8 @@ SIMULATION_SETTINGS = {
     "dt0": 0.1,
     "max_time_iter": 30,
     "use_reject_sampling": True,
+    "reject_bound_real": [(0, float("inf"))],
+    "reject_bound_complex": None,
     "use_complex_part": True,
 }
 

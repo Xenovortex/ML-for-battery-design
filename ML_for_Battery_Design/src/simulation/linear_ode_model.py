@@ -59,6 +59,13 @@ class LinearODEsystem(SimulationModel):
             default_param_values (dict): default values of hidden parameters, if not sampled
             plot_settings (dict): settings for plotting simulation data
         """
+        self.reject_bounds = {
+            "real": simulation_settings["reject_bound_real"],
+            "complex": simulation_settings["reject_bound_complex"],
+        }
+        self.use_complex = simulation_settings["use_complex_part"]
+        self.num_features = 4 if self.use_complex else 2
+
         super().__init__(
             hidden_params,
             simulation_settings,
@@ -66,13 +73,13 @@ class LinearODEsystem(SimulationModel):
             default_param_values,
             plot_settings,
         )
-        self.use_complex = self.simulation_settings["use_complex_part"]
-        self.num_features = 4 if self.use_complex else 2
+
         (
             self.prior,
             self.simulator,
             self.generative_model,
         ) = self.get_bayesflow_generator()
+
         self.print_internal_settings()
 
     def get_sim_data_shape(self) -> tuple:
@@ -101,10 +108,22 @@ class LinearODEsystem(SimulationModel):
             ]
         )
         eigenvalues, _ = np.linalg.eig(A)
-        if np.any(eigenvalues.real > 0):
-            return True
-        else:
-            return False
+
+        if self.reject_bounds["real"] is not None:
+            for interval in self.reject_bounds["real"]:
+                if np.any(eigenvalues.real >= interval[0]) and np.any(
+                    eigenvalues.real <= interval[1]
+                ):
+                    return True
+        elif self.reject_bounds["complex"] is not None:
+            if self.reject_bounds["complex"] == "zero":
+                if np.any(eigenvalues.imag == 0):
+                    return True
+            elif self.reject_bounds["complex"] == "non_zero":
+                if np.any(eigenvalues.imag != 0):
+                    return True
+
+        return False
 
     def solver(self, params: npt.NDArray[Any]) -> npt.NDArray[Any]:
         """Returns analytical solutions u and v of linear ODE system

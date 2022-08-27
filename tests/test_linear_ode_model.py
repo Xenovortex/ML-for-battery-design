@@ -2,11 +2,11 @@ import os
 import random
 
 import numpy as np
+import pytest
 from bayesflow.forward_inference import GenerativeModel, Prior, Simulator
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-import pytest
 from ML_for_Battery_Design.src.settings.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS,
 )
@@ -16,17 +16,50 @@ from tests.constants import AUTO_CLOSE_PLOTS
 # ------------------------------ Dummy Test Data ----------------------------- #
 
 dummy_matrices = [
-    (np.array([1, 2, 3, 4]), True),  # real, negative and positive
-    (np.array([1, 2, 1, 4]), True),  # real, both positive
-    (np.array([-1, 0, 0, -3]), False),  # real, both negative
-    (np.array([0, 0, 0, 0]), False),  # real, both zero
-    (np.array([-1, 0, 0, 0]), False),  # real, negative and zero
-    (np.array([1, 0, 0, 0]), True),  # real, positive and zero
-    (np.array([1, -2, 3, 4]), True),  # complex, both real part positive
-    (np.array([1, -2, 5, -1]), False),  # complex, both real part negative
-    (np.array([1, -4, 4, -1]), False),  # complex, both real part zero
+    np.array([1, 2, 3, 4]),  # real, negative and positive
+    np.array([1, 2, 1, 4]),  # real, both positive
+    np.array([-1, 0, 0, -3]),  # real, both negative
+    np.array([0, 0, 0, 0]),  # real, both zero
+    np.array([-1, 0, 0, 0]),  # real, negative and zero
+    np.array([1, 0, 0, 0]),  # real, positive and zero
+    np.array([1, -2, 3, 4]),  # complex, both real part positive
+    np.array([1, -2, 5, -1]),  # complex, both real part negative
+    np.array([1, -4, 4, -1]),  # complex, both real part zero
 ]
 
+reject_bound = [
+    (
+        {"reject_bound_real": [(0, float("inf"))], "reject_bound_complex": None},
+        [True, True, False, True, True, True, True, False, True],
+    ),
+    (
+        {"reject_bound_real": [(float("-inf"), 0)], "reject_bound_complex": None},
+        [True, False, True, True, True, True, False, True, True],
+    ),
+    (
+        {
+            "reject_bound_real": [(0, 10), (10, float("inf"))],
+            "reject_bound_complex": None,
+        },
+        [True, True, False, True, True, True, True, False, True],
+    ),
+    (
+        {
+            "reject_bound_real": [(float("-inf"), -10), (-10, 0)],
+            "reject_bound_complex": None,
+        },
+        [True, False, True, True, True, True, False, True, True],
+    ),
+    (
+        {"reject_bound_real": None, "reject_bound_complex": "zero"},
+        6 * [True] + 3 * [False],
+    ),
+    (
+        {"reject_bound_real": None, "reject_bound_complex": "non_zero"},
+        6 * [False] + 3 * [True],
+    ),
+    ({"reject_bound_real": None, "reject_bound_complex": None}, 9 * [False]),
+]
 
 # ---------------- Test LinearODEsystem Class Inititialization --------------- #
 
@@ -75,10 +108,12 @@ def test_linear_ode_system_init(use_complex, capsys):
     assert isinstance(test_object.simulation_settings, dict)
     assert isinstance(test_object.sample_boundaries, dict)
     assert isinstance(test_object.default_param_values, dict)
+    assert isinstance(test_object.plot_settings, dict)
     assert test_object.hidden_params == init_data["hidden_params"]
     assert test_object.simulation_settings == init_data["simulation_settings"]
     assert test_object.sample_boundaries == init_data["sample_boundaries"]
     assert test_object.default_param_values == init_data["default_param_values"]
+    assert test_object.plot_settings == init_data["plot_settings"]
     assert isinstance(test_object.dt0, float)
     assert test_object.dt0 == init_data["simulation_settings"]["dt0"]
     assert isinstance(test_object.max_time_iter, int)
@@ -105,8 +140,7 @@ def test_linear_ode_system_init(use_complex, capsys):
         assert test_object.num_features == 4
     else:
         assert test_object.num_features == 2
-    assert isinstance(test_object.plot_settings, dict)
-    assert test_object.plot_settings == init_data["plot_settings"]
+
     assert isinstance(test_object.prior, Prior)
     assert isinstance(test_object.simulator, Simulator)
     assert isinstance(test_object.generative_model, GenerativeModel)
@@ -125,6 +159,14 @@ def test_linear_ode_system_init(use_complex, capsys):
     assert test_object.prior_stds.ndim == 2
     assert test_object.prior_stds.shape[0] == 1
     assert test_object.prior_stds.shape[1] == sum(init_data["hidden_params"].values())
+    assert (
+        test_object.reject_bounds["real"]
+        == init_data["simulation_settings"]["reject_bound_real"]
+    )
+    assert (
+        test_object.reject_bounds["complex"]
+        == init_data["simulation_settings"]["reject_bound_complex"]
+    )
     assert out == expected_output
     assert err == ""
 
@@ -340,13 +382,21 @@ def test_linear_ode_system_get_sim_data_shape_method(use_complex):
         assert sim_data_dim[1] == 2
 
 
-@pytest.mark.parametrize("dummy_matrix", dummy_matrices)
-def test_linear_ode_system_reject_sampler_method(dummy_matrix):
-    test_object = LinearODEsystem(**LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS)
-    sample = np.concatenate((dummy_matrix[0], np.random.uniform(-1000, 1000, size=2)))
-    reject = test_object.reject_sampler(sample)
-    assert isinstance(reject, bool)
-    assert reject == dummy_matrix[1]
+@pytest.mark.parametrize("reject_bound_case", reject_bound)
+def test_linear_ode_system_reject_sampler_method(reject_bound_case):
+    init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
+    init_data["simulation_settings"]["reject_bound_real"] = reject_bound_case[0][
+        "reject_bound_real"
+    ]
+    init_data["simulation_settings"]["reject_bound_complex"] = reject_bound_case[0][
+        "reject_bound_complex"
+    ]
+    test_object = LinearODEsystem(**init_data)
+    for dummy_matrix, expected_result in zip(dummy_matrices, reject_bound_case[1]):
+        sample = np.concatenate((dummy_matrix, np.random.uniform(-1000, 1000, size=2)))
+        reject = test_object.reject_sampler(sample)
+        assert isinstance(reject, bool)
+        assert reject == expected_result
 
 
 @pytest.mark.parametrize("use_complex", [True, False])

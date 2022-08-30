@@ -1,6 +1,7 @@
 import os
 import random
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -242,6 +243,51 @@ def test_evaluater_load_losses_type_error(model_name, dummy_loss, capsys):
 
 
 @pytest.mark.parametrize("model_name", models)
+def test_evaluater_plot_wrapper_errors(model_name, capsys):
+    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    plot_settings = simulation_settings[model_name]["plot_settings"]
+    plot_settings["show_title"] = True
+    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+
+    evaluater = Evaluater(
+        sim_model,
+        dummy_amortizer,
+        dummy_trainer,
+        plot_settings,
+        inference_settings[model_name]["evaluation"],
+    )
+
+    def dummy_plot(**kwargs):
+        fig = plt.figure()
+        plt.close()
+        return fig
+
+    with pytest.raises(ValueError):
+        evaluater.plot_wrapper(dummy_plot)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - plot_wrapper: plot_setting['show_title'] is True, but no title_name is None".format(
+                evaluater.__class__.__name__
+            )
+        )
+
+    with pytest.raises(ValueError):
+        evaluater.plot_wrapper(
+            dummy_plot, parent_folder="pytest_parent_folder", filename=None
+        )
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert (
+            err
+            == "{} - plot_wrapper: parent_folder {} given, but filename is None".format(
+                evaluater.__class__.__name__, "pytest_parent_folder"
+            )
+        )
+
+
+@pytest.mark.parametrize("model_name", models)
 def test_evaluater_generate_test_data(model_name):
     sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(
         model_name, remove_nan=False
@@ -401,7 +447,7 @@ def test_evaluater_evaluate_bayesflow_model_plot_latent(model_name):
         os.rmdir("pytest")
 
 
-"""
+@pytest.mark.skip(reason="wait for bayesflow bug to resolve")
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
     sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
@@ -440,7 +486,6 @@ def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
         os.remove(os.path.join("pytest", "sbc_hist.png"))
     if os.path.exists("pytest"):
         os.rmdir("pytest")
-"""
 
 
 @pytest.mark.parametrize("model_name", models)

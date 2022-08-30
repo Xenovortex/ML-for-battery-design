@@ -25,12 +25,33 @@ from ML_for_Battery_Design.src.simulation.simulation_model import SimulationMode
 
 
 class Initializer:
+    """Initializer for setting up all necessary classes and objects based on setting files
+
+    Attributes:
+        sim_model_name (str): simulation model name
+        summary_net_name (str): summary network name
+        data_name (str): dataset name to save or load
+        filename (str): name of files to save and read
+        save_model (bool): If True, save amortizer checkpoints
+        test_mode (bool): Run Initializer in test mode, reduce runtime for unit testing
+        sim_model (Type[SimulationModel]): simulation model allows for prior sampling and simulation data generation
+        mode (str): mode in which main.py is executed
+        file_manager (Type[FileManager]): generate save path strings for file organization
+        trainer (bayesflow.Trainer): trainer for training BayesFlow (only in train_online and train_offline mode)
+    """
+
     def __init__(self, **kwargs: str) -> None:
+        """Initializes :class:Initializer
+
+        Args:
+            **kwargs (str): keyword arguments received by main docopt interface
+        """
         self.sim_model_name = kwargs["<sim_model>"]
         self.summary_net_name = kwargs["<summary_net>"]
         self.data_name = kwargs["<data_name>"]
         self.filename = kwargs["<filename>"]
         self.save_model = bool(kwargs["--save_model"])
+        self.test_mode = bool(kwargs["--test_mode"])
 
         self.sim_model = self.get_sim_model()
 
@@ -54,6 +75,11 @@ class Initializer:
             self.file_manager = FileManager(self.mode, **kwargs)
 
     def get_sim_model(self) -> Type[SimulationModel]:
+        """Returns simulation model
+
+        Returns:
+            sim_model (Type[SimulationModel]): simulation model allows for prior sampling and simulation data generation
+        """
         if self.sim_model_name in simulation_settings:
             sim_settings = simulation_settings[self.sim_model_name]
         else:
@@ -73,6 +99,11 @@ class Initializer:
         return sim_model
 
     def get_summary_net(self) -> Type[tf.keras.Model]:
+        """Returns summary network
+
+        Returns:
+            summary_net (Type[tf.keras.Model]): summary network of BayesFlow
+        """
         if self.sim_model_name in architecture_settings:
             if self.summary_net_name in architecture_settings[self.sim_model_name]:
                 summary_architecture = architecture_settings[self.sim_model_name][
@@ -88,12 +119,12 @@ class Initializer:
                 )
         else:
             raise ValueError(
-                "{} - get_summary_net: {} is not a valid simulation model".format(
+                "{} - get_summary_net: simulation model {} has no architecture settings".format(
                     self.__class__.__name__, self.sim_model_name
                 )
             )
-        meta_dict = build_meta_dict({}, summary_architecture)
         if self.summary_net_name in summary_collection:
+            meta_dict = build_meta_dict({}, summary_architecture)
             summary_net = summary_collection[self.summary_net_name](meta_dict)
         else:
             raise ValueError(
@@ -104,6 +135,11 @@ class Initializer:
         return summary_net
 
     def get_inference_net(self) -> Type[InvertibleNetwork]:
+        """Returns inference network
+
+        Returns:
+            inference_net (Type[InvertibleNetwork]): conditional invertible neural network of BayesFlow
+        """
         num_params = self.sim_model.num_hidden_params
         if self.sim_model_name in architecture_settings:
             if "INN" in architecture_settings[self.sim_model_name]:
@@ -128,6 +164,11 @@ class Initializer:
         return inference_net
 
     def get_amortizer(self) -> Type[AmortizedPosterior]:
+        """Returns BayesFlow amortizer
+
+        Returns:
+            amortizer (Type[AmortizedPosterior]): BayesFlow amortizer
+        """
         summary_net = self.get_summary_net()
         inference_net = self.get_inference_net()
         amortizer = AmortizedPosterior(
@@ -136,28 +177,38 @@ class Initializer:
         return amortizer
 
     def get_configurator(self) -> Type[Processing]:
+        """Returns configurator
+
+        Returns:
+            configurator (Type[Processing]): object for handling  preprocessing pior samples and simulation data
+        """
         if self.sim_model_name in inference_settings:
             if "processing" in inference_settings[self.sim_model_name]:
-                configuator = Processing(
+                configurator = Processing(
                     inference_settings[self.sim_model_name]["processing"],
                     self.sim_model.prior_means,
                     self.sim_model.prior_stds,
                 )
             else:
                 raise ValueError(
-                    "{} - get_trainer: processing not found in inference settings for {} simulation model".format(
+                    "{} - get_configurator: processing not found in inference settings for {} simulation model".format(
                         self.__class__.__name__, self.sim_model_name
                     )
                 )
         else:
             raise ValueError(
-                "{} - get_trainer: {} is not a valid simulation model".format(
+                "{} - get_configurator: {} is not a valid simulation model".format(
                     self.__class__.__name__, self.sim_model_name
                 )
             )
-        return configuator
+        return configurator
 
     def get_trainer(self) -> Type[Trainer]:
+        """Returns trainer
+
+        Returns:
+            trainer (Type[Trainer]): trainer for training BayesFlow
+        """
         amortizer = self.get_amortizer()
         configurator = self.get_configurator()
         save_model_path = self.file_manager("model") if self.save_model else None
@@ -170,7 +221,12 @@ class Initializer:
         )
         return trainer
 
-    def get_evaluater(self):
+    def get_evaluater(self) -> Type[Evaluater]:
+        """Returns evaluater
+
+        Returns:
+            evaluater (Type[Evaluater]): object for evaluating BayesFlow and simulation model
+        """
         sim_model = self.get_sim_model()
         amortizer = self.get_amortizer()
         trainer = self.get_trainer()
@@ -184,17 +240,30 @@ class Initializer:
         return evaluater
 
     def generate_hdf5_data(self) -> None:
+        """Generate simulation data and saves it in a hdf5 file"""
+
+        if self.mode != "generate_data":
+            raise ValueError(
+                "{} - generate_hdf5_data: main.py was executed in {} mode, but needs to be in generate_data mode".format(
+                    self.__class__.__name__, self.mode
+                )
+            )
+
         print("Start generating data:")
         parent_folder = self.file_manager("data")
         pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
         save_path = os.path.join(parent_folder, "data.h5")
 
-        chunk_size = inference_settings[self.sim_model_name]["generate_data"][
-            "chunk_size"
-        ]
-        total_n_sim = inference_settings[self.sim_model_name]["generate_data"][
-            "total_n_sim"
-        ]
+        chunk_size = (
+            inference_settings[self.sim_model_name]["generate_data"]["chunk_size"]
+            if not self.test_mode
+            else 4
+        )
+        total_n_sim = (
+            inference_settings[self.sim_model_name]["generate_data"]["total_n_sim"]
+            if not self.test_mode
+            else 8
+        )
         num_chunks = total_n_sim // chunk_size
 
         prior_sum = 0
@@ -210,50 +279,55 @@ class Initializer:
             hf.attrs["is_pde"] = self.sim_model.is_pde
             hf.attrs["sim_data_shape"] = self.sim_model.get_sim_data_shape()
 
-            true_params, sim_data = self.sim_model.generative_model(
-                batch_size=chunk_size
-            )
+            data_dict = self.sim_model.generative_model(batch_size=chunk_size)
 
-            prior_sum += np.mean(true_params)
-            prior_sqsum += np.mean(np.square(true_params))
-            chunk_sum += np.mean(sim_data)
-            chunk_sqsum += np.mean(np.square(sim_data))
+            prior_sum += np.mean(data_dict["prior_draws"])
+            prior_sqsum += np.mean(np.square(data_dict["prior_draws"]))
+            chunk_sum += np.mean(data_dict["sim_data"])
+            chunk_sqsum += np.mean(np.square(data_dict["sim_data"]))
 
             hf.create_dataset(
                 "true_params",
-                data=true_params,
+                data=data_dict["prior_draws"],
                 compression="gzip",
                 chunks=True,
                 maxshape=(None, self.sim_model.num_hidden_params),
             )
             hf.create_dataset(
                 "sim_data",
-                data=sim_data,
+                data=data_dict["sim_data"],
                 compression="gzip",
                 chunks=True,
                 maxshape=tuple([None] + list(self.sim_model.get_sim_data_shape())),
             )
 
             if num_chunks > 1:
-                for i in tqdm(range(num_chunks - 1)):
-                    true_params, sim_data = self.sim_model.generative_model(
-                        batch_size=chunk_size
-                    )
+                for _ in tqdm(range(num_chunks - 1)):
+                    data_dict = self.sim_model.generative_model(batch_size=chunk_size)
 
-                    prior_sum += np.mean(true_params)
-                    prior_sqsum += np.mean(np.square(true_params))
-                    chunk_sum += np.mean(sim_data)
-                    chunk_sqsum += np.mean(np.square(sim_data))
+                    prior_sum += np.mean(data_dict["prior_draws"])
+                    prior_sqsum += np.mean(np.square(data_dict["prior_draws"]))
+                    chunk_sum += np.mean(data_dict["sim_data"])
+                    chunk_sqsum += np.mean(np.square(data_dict["sim_data"]))
 
                     hf["true_params"].resize(
-                        (hf["true_params"].shape[0] + true_params.shape[0]), axis=0
+                        (
+                            hf["true_params"].shape[0]
+                            + data_dict["prior_draws"].shape[0]
+                        ),
+                        axis=0,
                     )
-                    hf["true_params"][-true_params.shape[0] :] = true_params
+                    hf["true_params"][-data_dict["prior_draws"].shape[0] :] = data_dict[
+                        "prior_draws"
+                    ]
 
                     hf["sim_data"].resize(
-                        (hf["sim_data"].shape[0] + sim_data.shape[0]), axis=0
+                        (hf["sim_data"].shape[0] + data_dict["sim_data"].shape[0]),
+                        axis=0,
                     )
-                    hf["sim_data"][-sim_data.shape[0] :] = sim_data
+                    hf["sim_data"][-data_dict["sim_data"].shape[0] :] = data_dict[
+                        "sim_data"
+                    ]
 
             prior_mean = prior_sum / num_chunks
             prior_std = (prior_sqsum / num_chunks - prior_mean**2) ** 0.5

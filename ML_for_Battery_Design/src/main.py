@@ -3,18 +3,19 @@
 """Provide command-line user interface.
 
 Usage:
-    main.py train_online <sim_model> <summary_net> [<filename>]
-    main.py train_online <sim_model> <summary_net> <filename> [-s | --save_model]
-    main.py train_offline <sim_model> <data_name> <summary_net> [<filename>]
-    main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model]
-    main.py generate_data <sim_model> <data_name>
-    main.py analyze_sim <sim_model> [<filename>]
-    main.py evaluate <sim_model> <data_name> <filename>
+    main.py train_online <sim_model> <summary_net> [<filename>] [-t | --test_mode]
+    main.py train_online <sim_model> <summary_net> <filename> [-s | --save_model] [-t | --test_mode]
+    main.py train_offline <sim_model> <data_name> <summary_net> [<filename>] [-t | --test_mode]
+    main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model] [-t | --test_mode]
+    main.py generate_data <sim_model> <data_name> [-t | --test_mode]
+    main.py analyze_sim <sim_model> [<filename>] [-t | --test_mode]
+    main.py evaluate <sim_model> <data_name> <filename> [-t | --test_mode]
     main.py -h | --help
 
 Options:
     -h, --help          Show this screen.
     -s, --save_model    Save trained BayesFlow model.
+    -t, --test_mode     Reduce runtime for unit testing
 """
 
 from typing import Optional, Sequence

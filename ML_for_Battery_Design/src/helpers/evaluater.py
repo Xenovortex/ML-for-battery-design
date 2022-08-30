@@ -121,8 +121,8 @@ class Evaluater:
                 )
             else:
                 raise ValueError(
-                    "{} - plot_wrapper: parent_folder given, but filename is None".format(
-                        self.__class__.__name__
+                    "{} - plot_wrapper: parent_folder {} given, but filename is None".format(
+                        self.__class__.__name__, parent_folder
                     )
                 )
         if self.plot_settings["show_plot"]:

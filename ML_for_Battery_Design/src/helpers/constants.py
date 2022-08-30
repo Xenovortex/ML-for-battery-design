@@ -18,10 +18,17 @@ summary_collection = {
 
 sim_model_collection = {"linear_ode_system": LinearODEsystem}
 
-architecture_settings = {"linear_ode_system": LINEAR_ODE_SYSTEM_ARCHITECTURES}
+architecture_settings = {
+    "linear_ode_system": LINEAR_ODE_SYSTEM_ARCHITECTURES,
+    "pytest": {"pytest": {}},  # needed for unit testing
+}
 
 simulation_settings = {
     "linear_ode_system": LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS,
+    "pytest": {},  # needed for unit testing
 }
 
-inference_settings = {"linear_ode_system": LINEAR_ODE_SYSTEM_INFERENCE_SETTINGS}
+inference_settings = {
+    "linear_ode_system": LINEAR_ODE_SYSTEM_INFERENCE_SETTINGS,
+    "pytest": {},  # needed for unit testing
+}

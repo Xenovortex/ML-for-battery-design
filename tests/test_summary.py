@@ -162,6 +162,8 @@ class LSTMTest(tf.test.TestCase):
             [0, random.randint(1, 3)],
             [random.randint(1, 3), 0],
             [random.randint(1, 3), random.randint(1, 3)],
+            [random.randint(2, 3), 0],
+            [random.randint(2, 3), random.randint(1, 3)],
         ]
     )
     def test_ode_inference(self, lstm_num_layer, fc_num_layer):

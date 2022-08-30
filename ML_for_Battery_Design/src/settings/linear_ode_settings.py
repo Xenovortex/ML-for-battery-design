@@ -92,6 +92,7 @@ LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
     "lr": 0.001,
     "num_epoch": 200,
     "it_per_epoch": 1000,
+    "batch_size": 32,
 }
 
 LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {

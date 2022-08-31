@@ -18,9 +18,9 @@ def test_main_train_online(filename, capsys):
     sim = random.choice(random_input)
     summary = random.choice(random_input)
     if filename is not None:
-        args = main.main(["train_online", sim, summary, filename])
+        args = main.main(["train_online", sim, summary, filename, "--test_mode"])
     else:
-        args = main.main(["train_online", sim, summary])
+        args = main.main(["train_online", sim, summary, "--test_mode"])
     out, err = capsys.readouterr()
     assert (
         out
@@ -39,6 +39,7 @@ def test_main_train_online(filename, capsys):
     assert args["<filename>"] == filename
     assert args["<data_name>"] is None
     assert not args["--save_model"]
+    assert args["--test_mode"]
 
 
 @pytest.mark.parametrize("filename", random_input + [None])
@@ -48,9 +49,11 @@ def test_main_train_online_save_model(filename, save_model, capsys):
     summary = random.choice(random_input)
     if filename is None:
         with pytest.raises(DocoptExit):
-            main.main(["train_online", sim, summary, save_model])
+            main.main(["train_online", sim, summary, save_model, "--test_mode"])
     else:
-        args = main.main(["train_online", sim, summary, filename, save_model])
+        args = main.main(
+            ["train_online", sim, summary, filename, save_model, "--test_mode"]
+        )
         out, err = capsys.readouterr()
         assert out == (
             "Interface user input:\n"
@@ -68,6 +71,7 @@ def test_main_train_online_save_model(filename, save_model, capsys):
         assert args["<filename>"] == filename
         assert args["<data_name>"] is None
         assert args["--save_model"]
+        assert args["--test_mode"]
 
 
 @pytest.mark.parametrize("filename", random_input + [None])

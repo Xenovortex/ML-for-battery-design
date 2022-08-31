@@ -23,6 +23,8 @@ from typing import Optional, Sequence
 from docopt import docopt
 from tabulate import tabulate
 
+# from ML_for_Battery_Design.src.helpers.wrappers import train_online
+
 
 def main(argv: Optional[Sequence[str]] = None) -> dict:
     """Main function for running the command line interface
@@ -39,7 +41,7 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     print(tabulate(list(args.items()), missingval="None"))
 
     if bool(args["train_online"]):
-        pass
+        pass  # train_online(**args)
     elif bool(args["train_offline"]):
         pass
     elif bool(args["generate_data"]):

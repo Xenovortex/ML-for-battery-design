@@ -61,16 +61,15 @@ def setup_dummy_objects(model_name, remove_nan=True):
         configurator=configurator,
         learning_rate=1e-3,
     )
-    return sim_model, dummy_amortizer, dummy_trainer
+    return sim_model, dummy_trainer
 
 
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_init(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
@@ -87,8 +86,8 @@ def test_evaluater_init(model_name):
 
 
 @pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_sim_model_plot_prior(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+def test_evaluater_evaluate_sim_model(model_name):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
 
     dummy_plot_settings = simulation_settings[model_name]["plot_settings"]
     dummy_plot_settings["show_plot"] = True
@@ -111,7 +110,6 @@ def test_evaluater_evaluate_sim_model_plot_prior(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         dummy_plot_settings,
         dummy_eval_settings,
@@ -124,37 +122,9 @@ def test_evaluater_evaluate_sim_model_plot_prior(model_name):
     if os.path.exists("pytest"):
         os.rmdir("pytest")
 
+    evaluater.eval_settings["plot_prior"] = False
+    evaluater.eval_settings["plot_sim_data"] = True
 
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_sim_model_plot_sim_data(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-
-    dummy_plot_settings = simulation_settings[model_name]["plot_settings"]
-    dummy_plot_settings["show_plot"] = True
-    dummy_plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(1, 8),
-        "n_samples": random.randint(1, 8),
-        "plot_prior": False,
-        "plot_sim_data": True,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": False,
-        "plot_post_with_prior": False,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        dummy_plot_settings,
-        dummy_eval_settings,
-    )
     evaluater.evaluate_sim_model("pytest")
 
     assert os.path.exists(os.path.join("pytest", "sim_data.png"))
@@ -166,7 +136,7 @@ def test_evaluater_evaluate_sim_model_plot_sim_data(model_name):
 
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_load_losses_dataframe(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
     num_iterations = random.randint(1, 10)
     dummy_losses = pd.DataFrame(
         np.random.uniform(-100, 100, size=(num_iterations, 1)), columns=["Default.Loss"]
@@ -174,7 +144,6 @@ def test_evaluater_load_losses_dataframe(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
@@ -188,7 +157,7 @@ def test_evaluater_load_losses_dataframe(model_name):
 
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_load_losses_path(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
     num_iterations = random.randint(1, 10)
     dummy_losses = pd.DataFrame(
         np.random.uniform(-100, 100, size=(num_iterations, 1)), columns=["Default.Loss"]
@@ -200,7 +169,6 @@ def test_evaluater_load_losses_path(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
@@ -220,11 +188,10 @@ def test_evaluater_load_losses_path(model_name):
 @pytest.mark.parametrize("model_name", models)
 @pytest.mark.parametrize("dummy_loss", non_dict_str_input)
 def test_evaluater_load_losses_type_error(model_name, dummy_loss, capsys):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
@@ -243,15 +210,43 @@ def test_evaluater_load_losses_type_error(model_name, dummy_loss, capsys):
 
 
 @pytest.mark.parametrize("model_name", models)
-def test_evaluater_plot_wrapper_errors(model_name, capsys):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+def test_evaluater_plot_wrapper(model_name):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
+    plot_settings = simulation_settings[model_name]["plot_settings"]
+    plot_settings["show_title"] = True
+    plot_settings["show_plot"] = True
+    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+
+    evaluater = Evaluater(
+        sim_model,
+        dummy_trainer,
+        plot_settings,
+        inference_settings[model_name]["evaluation"],
+    )
+
+    def dummy_plot(**kwargs):
+        fig = plt.figure()
+        plt.close()
+        return fig
+
+    evaluater.plot_wrapper(dummy_plot, "pytest", "pytest", "pytest.png")
+
+    assert os.path.exists(os.path.join("pytest", "pytest.png"))
+    if os.path.exists(os.path.join("pytest", "pytest.png")):
+        os.remove(os.path.join("pytest", "pytest.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_evaluater_plot_wrapper_no_title(model_name, capsys):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
     plot_settings = simulation_settings[model_name]["plot_settings"]
     plot_settings["show_title"] = True
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         plot_settings,
         inference_settings[model_name]["evaluation"],
@@ -273,6 +268,26 @@ def test_evaluater_plot_wrapper_errors(model_name, capsys):
             )
         )
 
+
+@pytest.mark.parametrize("model_name", models)
+def test_evaluater_plot_wrapper_no_filename(model_name, capsys):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
+    plot_settings = simulation_settings[model_name]["plot_settings"]
+    plot_settings["show_title"] = False
+    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+
+    evaluater = Evaluater(
+        sim_model,
+        dummy_trainer,
+        plot_settings,
+        inference_settings[model_name]["evaluation"],
+    )
+
+    def dummy_plot(**kwargs):
+        fig = plt.figure()
+        plt.close()
+        return fig
+
     with pytest.raises(ValueError):
         evaluater.plot_wrapper(
             dummy_plot, parent_folder="pytest_parent_folder", filename=None
@@ -289,15 +304,12 @@ def test_evaluater_plot_wrapper_errors(model_name, capsys):
 
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_generate_test_data(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(
-        model_name, remove_nan=False
-    )
+    sim_model, dummy_trainer = setup_dummy_objects(model_name, remove_nan=False)
     batch_size = random.randint(2, 8)
     n_samples = random.randint(2, 8)
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
@@ -363,8 +375,8 @@ def test_evaluater_generate_test_data(model_name):
 
 
 @pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_loss(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+def test_evaluater_evaluate_bayesflow_model(model_name):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
     num_iterations = random.randint(1, 10)
     dummy_losses = pd.DataFrame(
         np.random.uniform(-100, 100, size=(num_iterations, 1)), columns=["Default.Loss"]
@@ -373,9 +385,10 @@ def test_evaluater_evaluate_bayesflow_model_plot_loss(model_name):
     plot_settings = simulation_settings[model_name]["plot_settings"]
     plot_settings["show_plot"] = True
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
+    batch_size = random.randint(1, 8)
 
     dummy_eval_settings = {
-        "batch_size": random.randint(1, 8),
+        "batch_size": batch_size,
         "n_samples": random.randint(2, 8),
         "plot_prior": False,
         "plot_sim_data": False,
@@ -391,7 +404,6 @@ def test_evaluater_evaluate_bayesflow_model_plot_loss(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         dummy_eval_settings,
@@ -406,37 +418,8 @@ def test_evaluater_evaluate_bayesflow_model_plot_loss(model_name):
     if os.path.exists("pytest"):
         os.rmdir("pytest")
 
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_latent(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-    batch_size = random.randint(1, 8)
-
-    dummy_eval_settings = {
-        "batch_size": batch_size,
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": True,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": False,
-        "plot_post_with_prior": False,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        simulation_settings[model_name]["plot_settings"],
-        dummy_eval_settings,
-    )
+    evaluater.eval_settings["plot_loss"] = False
+    evaluater.eval_settings["plot_latent"] = True
 
     evaluater.evaluate_bayesflow_model("pytest")
 
@@ -446,11 +429,69 @@ def test_evaluater_evaluate_bayesflow_model_plot_latent(model_name):
     if os.path.exists("pytest"):
         os.rmdir("pytest")
 
+    evaluater.eval_settings["plot_latent"] = False
+    evaluater.eval_settings["plot_sbc_ecdf"] = True
+
+    evaluater.evaluate_bayesflow_model("pytest")
+
+    assert os.path.exists(os.path.join("pytest", "sbc_ecdf.png"))
+    if os.path.exists(os.path.join("pytest", "sbc_ecdf.png")):
+        os.remove(os.path.join("pytest", "sbc_ecdf.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+    evaluater.eval_settings["plot_sbc_ecdf"] = False
+    evaluater.eval_settings["plot_true_vs_estimated"] = True
+
+    evaluater.evaluate_bayesflow_model("pytest")
+
+    assert os.path.exists(os.path.join("pytest", "true_vs_estimated.png"))
+    if os.path.exists(os.path.join("pytest", "true_vs_estimated.png")):
+        os.remove(os.path.join("pytest", "true_vs_estimated.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+    evaluater.eval_settings["plot_true_vs_estimated"] = False
+    evaluater.eval_settings["plot_posterior"] = True
+
+    evaluater.evaluate_bayesflow_model("pytest")
+
+    assert os.path.exists(os.path.join("pytest", "posterior.png"))
+    if os.path.exists(os.path.join("pytest", "posterior.png")):
+        os.remove(os.path.join("pytest", "posterior.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+    evaluater.eval_settings["plot_posterior"] = False
+    evaluater.eval_settings["plot_post_with_prior"] = True
+
+    evaluater.evaluate_bayesflow_model("pytest")
+
+    assert os.path.join(os.path.join("pytest", "compare_prior_post.png"))
+    if os.path.exists(os.path.join("pytest", "compare_prior_post.png")):
+        os.remove(os.path.join("pytest", "compare_prior_post.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
+    evaluater.eval_settings["plot_post_with_prior"] = False
+    evaluater.eval_settings["plot_resimulation"] = True
+    evaluater.plot_settings["num_plots"] = 4
+    evaluater.eval_settings["n_samples"] = random.randint(4, 8)
+
+    evaluater.test_dict = evaluater.generate_test_data()
+    evaluater.evaluate_bayesflow_model("pytest")
+
+    assert os.path.exists(os.path.join("pytest", "resimulation.png"))
+    if os.path.exists(os.path.join("pytest", "resimulation.png")):
+        os.remove(os.path.join("pytest", "resimulation.png"))
+    if os.path.exists("pytest"):
+        os.rmdir("pytest")
+
 
 @pytest.mark.skip(reason="wait for bayesflow bug to resolve")
 @pytest.mark.parametrize("model_name", models)
 def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
     plot_settings = simulation_settings[model_name]["plot_settings"]
     plot_settings["show_plot"] = True
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
@@ -473,7 +514,6 @@ def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_amortizer,
         dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         dummy_eval_settings,
@@ -484,201 +524,5 @@ def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
     assert os.path.exists(os.path.join("pytest", "sbc_hist.png"))
     if os.path.exists(os.path.join("pytest", "sbc_hist.png")):
         os.remove(os.path.join("pytest", "sbc_hist.png"))
-    if os.path.exists("pytest"):
-        os.rmdir("pytest")
-
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_sbc_ecdf(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(1, 8),
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": True,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": False,
-        "plot_post_with_prior": False,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        simulation_settings[model_name]["plot_settings"],
-        dummy_eval_settings,
-    )
-
-    evaluater.evaluate_bayesflow_model("pytest")
-
-    assert os.path.exists(os.path.join("pytest", "sbc_ecdf.png"))
-    if os.path.exists(os.path.join("pytest", "sbc_ecdf.png")):
-        os.remove(os.path.join("pytest", "sbc_ecdf.png"))
-    if os.path.exists("pytest"):
-        os.rmdir("pytest")
-
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_true_vs_estimated(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(2, 8),
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": True,
-        "plot_posterior": False,
-        "plot_post_with_prior": False,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        simulation_settings[model_name]["plot_settings"],
-        dummy_eval_settings,
-    )
-
-    evaluater.evaluate_bayesflow_model("pytest")
-
-    assert os.path.exists(os.path.join("pytest", "true_vs_estimated.png"))
-    if os.path.exists(os.path.join("pytest", "true_vs_estimated.png")):
-        os.remove(os.path.join("pytest", "true_vs_estimated.png"))
-    if os.path.exists("pytest"):
-        os.rmdir("pytest")
-
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_posterior(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(2, 8),
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": True,
-        "plot_post_with_prior": False,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        simulation_settings[model_name]["plot_settings"],
-        dummy_eval_settings,
-    )
-
-    evaluater.evaluate_bayesflow_model("pytest")
-
-    assert os.path.exists(os.path.join("pytest", "posterior.png"))
-    if os.path.exists(os.path.join("pytest", "posterior.png")):
-        os.remove(os.path.join("pytest", "posterior.png"))
-    if os.path.exists("pytest"):
-        os.rmdir("pytest")
-
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_posterior_with_prior(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(2, 8),
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": False,
-        "plot_post_with_prior": True,
-        "plot_resimulation": False,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        simulation_settings[model_name]["plot_settings"],
-        dummy_eval_settings,
-    )
-
-    evaluater.evaluate_bayesflow_model("pytest")
-
-    assert os.path.join(os.path.join("pytest", "compare_prior_post.png"))
-    if os.path.exists(os.path.join("pytest", "compare_prior_post.png")):
-        os.remove(os.path.join("pytest", "compare_prior_post.png"))
-    if os.path.exists("pytest"):
-        os.rmdir("pytest")
-
-
-@pytest.mark.parametrize("model_name", models)
-def test_evaluater_evaluate_bayesflow_model_plot_resimulation(model_name):
-    sim_model, dummy_amortizer, dummy_trainer = setup_dummy_objects(model_name)
-    plot_settings = simulation_settings[model_name]["plot_settings"]
-    plot_settings["show_plot"] = True
-    plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-    plot_settings["num_plots"] = 4
-
-    dummy_eval_settings = {
-        "batch_size": random.randint(4, 8),
-        "n_samples": random.randint(2, 8),
-        "plot_prior": False,
-        "plot_sim_data": False,
-        "plot_loss": False,
-        "plot_latent": False,
-        "plot_sbc_histogram": False,
-        "plot_sbc_ecdf": False,
-        "plot_true_vs_estimated": False,
-        "plot_posterior": False,
-        "plot_post_with_prior": False,
-        "plot_resimulation": True,
-    }
-
-    evaluater = Evaluater(
-        sim_model,
-        dummy_amortizer,
-        dummy_trainer,
-        plot_settings,
-        dummy_eval_settings,
-    )
-
-    evaluater.evaluate_bayesflow_model("pytest")
-
-    assert os.path.exists(os.path.join("pytest", "resimulation.png"))
-    if os.path.exists(os.path.join("pytest", "resimulation.png")):
-        os.remove(os.path.join("pytest", "resimulation.png"))
     if os.path.exists("pytest"):
         os.rmdir("pytest")

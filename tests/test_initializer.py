@@ -8,7 +8,6 @@ from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.networks import InvertibleNetwork
 from bayesflow.trainers import Trainer
 
-import ML_for_Battery_Design.src.main as main
 from ML_for_Battery_Design.src.helpers.constants import sim_model_collection
 from ML_for_Battery_Design.src.helpers.evaluater import Evaluater
 from ML_for_Battery_Design.src.helpers.filemanager import FileManager
@@ -16,35 +15,11 @@ from ML_for_Battery_Design.src.helpers.initializer import Initializer
 from ML_for_Battery_Design.src.helpers.processing import Processing
 from ML_for_Battery_Design.src.helpers.summary import FC_Network
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
+from tests.helpers import setup_user_args
 
 models = ["linear_ode_system"]
 
 modes = ["train_online", "train_offline", "generate_data", "analyze_sim", "evaluate"]
-
-
-def setup_user_args(mode, sim_model, save_model=False):
-    if mode == "train_online":
-        user_input = [mode, sim_model, "FC", "pytest_file"]
-        if save_model:
-            user_input += ["--save_model"]
-    elif mode == "train_offline":
-        user_input = [mode, sim_model, "pytest_data", "FC", "pytest_file"]
-        if save_model:
-            user_input += ["--save_model"]
-    elif mode == "generate_data":
-        user_input = [mode, sim_model, "pytest_data"]
-    elif mode == "analyze_sim":
-        user_input = [mode, sim_model, "pytest_file"]
-    elif mode == "evaluate":
-        user_input = [mode, sim_model, "pytest_data", "pytest_file"]
-    else:
-        raise ValueError("{} is not a valid mode".format(mode))
-
-    user_input += ["--test_mode"]
-
-    args = main.main(user_input)
-
-    return args
 
 
 @pytest.mark.parametrize("model_name", models)

@@ -90,7 +90,7 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 
 LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
     "lr": 0.001,
-    "num_epoch": 200,
+    "num_epochs": 200,
     "it_per_epoch": 1000,
     "batch_size": 32,
 }
@@ -112,7 +112,7 @@ LINEAR_ODE_SYSTEM_EVALUATION_SETTINGS = {
     "plot_sim_data": True,
     "plot_loss": True,
     "plot_latent": True,
-    "plot_sbc_histogram": True,
+    "plot_sbc_histogram": False,  # wait for bayesflow bug resolve
     "plot_sbc_ecdf": True,
     "plot_true_vs_estimated": True,
     "plot_posterior": True,

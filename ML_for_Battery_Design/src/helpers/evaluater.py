@@ -6,7 +6,6 @@ from typing import Callable, Type, Union
 import bayesflow.diagnostics as diag
 import matplotlib.pyplot as plt
 import pandas as pd
-from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.trainers import Trainer
 
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
@@ -28,7 +27,6 @@ class Evaluater:
     def __init__(
         self,
         sim_model: Type[SimulationModel],
-        amortizer: Type[AmortizedPosterior],
         trainer: Type[Trainer],
         plot_settings: dict,
         evaluation_settings: dict,
@@ -43,7 +41,7 @@ class Evaluater:
             evaluation_settings (dict): settings for evaluation
         """
         self.sim_model = sim_model
-        self.amortizer = amortizer
+        self.amortizer = trainer.amortizer
         self.trainer = trainer
         self.plot_settings = plot_settings
         self.eval_settings = evaluation_settings
@@ -113,8 +111,8 @@ class Evaluater:
                     )
                 )
         if parent_folder is not None:
-            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
             if filename is not None:
+                pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
                 save_path = os.path.join(parent_folder, filename)
                 fig.savefig(
                     save_path, transparent=True, bbox_inches="tight", pad_inches=0

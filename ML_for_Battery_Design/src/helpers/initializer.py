@@ -58,12 +58,15 @@ class Initializer:
         if bool(kwargs["train_online"]):
             self.mode = "train_online"
             self.data_name = "online"
+            kwargs["<data_name>"] = "online"
             self.file_manager = FileManager(self.mode, **kwargs)
             self.trainer = self.get_trainer()
+            self.evaluater = self.get_evaluater()
         elif bool(kwargs["train_offline"]):
             self.mode = "train_offline"
             self.file_manager = FileManager(self.mode, **kwargs)
             self.trainer = self.get_trainer()
+            self.evaluater = self.get_evaluater()
         elif bool(kwargs["generate_data"]):
             self.mode = "generate_data"
             self.file_manager = FileManager(self.mode, **kwargs)
@@ -227,12 +230,9 @@ class Initializer:
         Returns:
             evaluater (Type[Evaluater]): object for evaluating BayesFlow and simulation model
         """
-        sim_model = self.get_sim_model()
-        amortizer = self.get_amortizer()
         trainer = self.get_trainer()
         evaluater = Evaluater(
-            sim_model,
-            amortizer,
+            self.sim_model,
             trainer,
             simulation_settings[self.sim_model_name]["plot_settings"],
             inference_settings[self.sim_model_name]["evaluation"],

@@ -40,6 +40,9 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     print("Interface user input:")
     print(tabulate(list(args.items()), missingval="None"))
 
+    if not bool(args["--test_mode"]):
+        return args
+
     if bool(args["train_online"]):
         pass  # train_online(**args)
     elif bool(args["train_offline"]):

@@ -38,7 +38,7 @@ class FileManager:
             path = os.path.join("data", self.sim_model_name, self.data_name)
         elif file_type == "model":
             path = os.path.join(
-                "model", self.sim_model_name, self.data_name, self.filename
+                "models", self.sim_model_name, self.data_name, self.filename
             )
         elif file_type == "result":
             try:

@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from ML_for_Battery_Design.src.helpers.constants import inference_settings
-from ML_for_Battery_Design.src.helpers.wrappers import train_online
+from ML_for_Battery_Design.src.helpers.wrappers import train_offline, train_online
 from tests.helpers import setup_user_args
 
 models = ["linear_ode_system"]
@@ -23,10 +23,10 @@ def test_wrappers_train_online(model_name):
     train_online(**args)
 
     assert os.path.exists(
-        os.path.join("model", model_name, "online", "pytest_file", "checkpoint")
+        os.path.join("models", model_name, "online", "pytest_file", "checkpoint")
     )
-    if os.path.exists(os.path.join("model", model_name, "online", "pytest_file")):
-        shutil.rmtree(os.path.join("model", model_name, "online", "pytest_file"))
+    if os.path.exists(os.path.join("models", model_name, "online", "pytest_file")):
+        shutil.rmtree(os.path.join("models", model_name, "online", "pytest_file"))
 
     assert os.path.exists(
         os.path.join("results", model_name, "online", "pytest_file", "losses.pickle")
@@ -108,3 +108,14 @@ def test_wrappers_train_online(model_name):
 
     if os.path.exists(os.path.join("results", model_name, "online", "pytest_file")):
         os.rmdir(os.path.join("results", model_name, "online", "pytest_file"))
+
+
+@pytest.mark.skip()
+@pytest.mark.parametrize("model_name", models)
+def test_wrappers_train_offline(model_name):
+    args = setup_user_args("train_offline", model_name, save_model=True)
+    train_offline(**args)
+
+    assert os.path.exists(
+        os.path.join("models", model_name, "online", "pytest_file", "checkpoint")
+    )

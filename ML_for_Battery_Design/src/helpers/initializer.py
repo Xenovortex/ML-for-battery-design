@@ -4,7 +4,9 @@ from typing import Type
 
 import h5py
 import numpy as np
+import pandas as pd
 import tensorflow as tf
+import tensorflow_io as tfio
 from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.helper_functions import build_meta_dict
 from bayesflow.networks import InvertibleNetwork
@@ -239,8 +241,30 @@ class Initializer:
         )
         return evaluater
 
+    def save_losses(self, losses: Type[pd.DataFrame]) -> None:
+        """Save recorded losses as DataFrame
+
+        Args:
+            losses (Type[pd.DataFrame]): DataFrame to save
+        """
+        pathlib.Path(self.file_manager("result")).mkdir(parents=True, exist_ok=True)
+        losses.to_pickle(os.path.join(self.file_manager("result"), "losses.pickle"))
+
+    def load_hdf5_data(self) -> dict:
+        """Load pre-generated data for offline training
+
+        Returns:
+            data_dict (dict): contains prior samples and simulation data
+        """
+        load_path = os.path.join(self.file_manager("data"), "data.h5")
+        true_params = tfio.IODataset.from_hdf5(load_path, dataset="/true_params")
+        sim_data = tfio.IODataset.from_hdf5(load_path, dataset="/sim_data")
+        data_dict = {"prior_draws": true_params, "sim_data": sim_data}
+
+        return data_dict
+
     def generate_hdf5_data(self) -> None:
-        """Generate simulation data and saves it in a hdf5 file"""
+        """Generate prior samples with simulation data and saves it in a hdf5 file"""
 
         if self.mode != "generate_data":
             raise ValueError(

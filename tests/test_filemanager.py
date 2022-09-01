@@ -75,7 +75,7 @@ def test_filemanager_call(file_type):
     if file_type == "data":
         assert path == os.path.join("data", sim_model_name, data_name)
     elif file_type == "model":
-        assert path == os.path.join("model", sim_model_name, data_name, filename)
+        assert path == os.path.join("models", sim_model_name, data_name, filename)
     elif file_type == "result":
         assert path == os.path.join("results", sim_model_name, data_name, filename)
     else:

@@ -3,10 +3,8 @@ import pathlib
 from typing import Type
 
 import h5py
-import numpy as np
 import pandas as pd
 import tensorflow as tf
-import tensorflow_io as tfio
 from bayesflow.amortized_inference import AmortizedPosterior
 from bayesflow.helper_functions import build_meta_dict
 from bayesflow.networks import InvertibleNetwork
@@ -257,9 +255,13 @@ class Initializer:
             data_dict (dict): contains prior samples and simulation data
         """
         load_path = os.path.join(self.file_manager("data"), "data.h5")
-        true_params = tfio.IODataset.from_hdf5(load_path, dataset="/true_params")
-        sim_data = tfio.IODataset.from_hdf5(load_path, dataset="/sim_data")
-        data_dict = {"prior_draws": true_params, "sim_data": sim_data}
+        with h5py.File(load_path, "r") as hf:
+            true_params = hf["true_params"][:]
+            sim_data = hf["sim_data"][:]
+        data_dict = {
+            "prior_draws": true_params,
+            "sim_data": sim_data,
+        }
 
         return data_dict
 
@@ -290,11 +292,6 @@ class Initializer:
         )
         num_chunks = total_n_sim // chunk_size
 
-        prior_sum = 0
-        prior_sqsum = 0
-        chunk_sum = 0
-        chunk_sqsum = 0
-
         with h5py.File(save_path, "w") as hf:
             hf.attrs["sim_model_name"] = self.sim_model_name
             hf.attrs["total_n_sim"] = total_n_sim
@@ -304,11 +301,6 @@ class Initializer:
             hf.attrs["sim_data_shape"] = self.sim_model.get_sim_data_shape()
 
             data_dict = self.sim_model.generative_model(batch_size=chunk_size)
-
-            prior_sum += np.mean(data_dict["prior_draws"])
-            prior_sqsum += np.mean(np.square(data_dict["prior_draws"]))
-            chunk_sum += np.mean(data_dict["sim_data"])
-            chunk_sqsum += np.mean(np.square(data_dict["sim_data"]))
 
             hf.create_dataset(
                 "true_params",
@@ -329,11 +321,6 @@ class Initializer:
                 for _ in tqdm(range(num_chunks - 1)):
                     data_dict = self.sim_model.generative_model(batch_size=chunk_size)
 
-                    prior_sum += np.mean(data_dict["prior_draws"])
-                    prior_sqsum += np.mean(np.square(data_dict["prior_draws"]))
-                    chunk_sum += np.mean(data_dict["sim_data"])
-                    chunk_sqsum += np.mean(np.square(data_dict["sim_data"]))
-
                     hf["true_params"].resize(
                         (
                             hf["true_params"].shape[0]
@@ -352,13 +339,3 @@ class Initializer:
                     hf["sim_data"][-data_dict["sim_data"].shape[0] :] = data_dict[
                         "sim_data"
                     ]
-
-            prior_mean = prior_sum / num_chunks
-            prior_std = (prior_sqsum / num_chunks - prior_mean**2) ** 0.5
-            sim_mean = chunk_sum / num_chunks
-            sim_std = (chunk_sqsum / num_chunks - sim_mean**2) ** 0.5
-
-            hf.attrs["prior_mean"] = prior_mean
-            hf.attrs["prior_std"] = prior_std
-            hf.attrs["sim_mean"] = sim_mean
-            hf.attrs["sim_std"] = sim_std

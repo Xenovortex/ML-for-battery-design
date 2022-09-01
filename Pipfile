@@ -13,7 +13,6 @@ pandas = "*"
 seaborn = "*"
 tabulate = "*"
 tqdm = "*"
-tensorflow-io = "*"
 
 [dev-packages]
 black = "*"

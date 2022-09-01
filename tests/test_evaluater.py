@@ -385,7 +385,7 @@ def test_evaluater_evaluate_bayesflow_model(model_name):
     plot_settings = simulation_settings[model_name]["plot_settings"]
     plot_settings["show_plot"] = True
     plot_settings["show_time"] = 0 if AUTO_CLOSE_PLOTS else None
-    batch_size = random.randint(1, 8)
+    batch_size = random.randint(2, 8)
 
     dummy_eval_settings = {
         "batch_size": batch_size,
@@ -476,7 +476,7 @@ def test_evaluater_evaluate_bayesflow_model(model_name):
     evaluater.eval_settings["plot_post_with_prior"] = False
     evaluater.eval_settings["plot_resimulation"] = True
     evaluater.plot_settings["num_plots"] = 4
-    evaluater.eval_settings["n_samples"] = random.randint(4, 8)
+    evaluater.eval_settings["n_samples"] = 4
 
     evaluater.test_dict = evaluater.generate_test_data()
     evaluater.evaluate_bayesflow_model("pytest")

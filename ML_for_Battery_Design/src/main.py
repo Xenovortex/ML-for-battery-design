@@ -3,19 +3,20 @@
 """Provide command-line user interface.
 
 Usage:
-    main.py train_online <sim_model> <summary_net> [<filename>] [-t | --test_mode]
-    main.py train_online <sim_model> <summary_net> <filename> [-s | --save_model] [-t | --test_mode]
-    main.py train_offline <sim_model> <data_name> <summary_net> [<filename>] [-t | --test_mode]
-    main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model] [-t | --test_mode]
-    main.py generate_data <sim_model> <data_name> [-t | --test_mode]
-    main.py analyze_sim <sim_model> [<filename>] [-t | --test_mode]
-    main.py evaluate <sim_model> <data_name> <filename> [-t | --test_mode]
+    main.py train_online <sim_model> <summary_net> [<filename>] [-t | --test_mode] [-k | --skip_wrappers]
+    main.py train_online <sim_model> <summary_net> <filename> [-s | --save_model] [-t | --test_mode] [-k | --skip_wrappers]
+    main.py train_offline <sim_model> <data_name> <summary_net> [<filename>] [-t | --test_mode] [-k | --skip_wrappers]
+    main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model] [-t | --test_mode] [-k | --skip_wrappers]
+    main.py generate_data <sim_model> <data_name> [-t | --test_mode] [-k | --skip_wrappers]
+    main.py analyze_sim <sim_model> [<filename>] [-t | --test_mode] [-k | --skip_wrappers]
+    main.py evaluate <sim_model> <data_name> <filename> [-t | --test_mode] [-k | --skip_wrappers]
     main.py -h | --help
 
 Options:
-    -h, --help          Show this screen.
-    -s, --save_model    Save trained BayesFlow model.
-    -t, --test_mode     Reduce runtime for unit testing
+    -h, --help              Show this screen.
+    -s, --save_model        Save trained BayesFlow model.
+    -t, --test_mode         Reduce runtime for unit testing
+    -k, --skip_wrappers     Skip wrappers execution for unit testing
 """
 
 from typing import Optional, Sequence
@@ -23,7 +24,11 @@ from typing import Optional, Sequence
 from docopt import docopt
 from tabulate import tabulate
 
-# from ML_for_Battery_Design.src.helpers.wrappers import train_online
+from ML_for_Battery_Design.src.helpers.wrappers import (
+    generate_data,
+    train_offline,
+    train_online,
+)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> dict:
@@ -40,15 +45,12 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     print("Interface user input:")
     print(tabulate(list(args.items()), missingval="None"))
 
-    if not bool(args["--test_mode"]):
-        return args
-
     if bool(args["train_online"]):
-        pass  # train_online(**args)
+        train_online(**args)
     elif bool(args["train_offline"]):
-        pass
+        train_offline(**args)
     elif bool(args["generate_data"]):
-        pass
+        generate_data(**args)
     elif bool(args["analyze_sim"]):
         pass
     elif bool(args["evaluate"]):

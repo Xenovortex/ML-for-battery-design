@@ -30,7 +30,7 @@ def setup_user_args(mode, sim_model, save_model=False):
     else:
         raise ValueError("{} is not a valid mode".format(mode))
 
-    user_input += ["--test_mode"]
+    user_input += ["--test_mode", "--skip_wrappers"]
 
     args = main.main(user_input)
 

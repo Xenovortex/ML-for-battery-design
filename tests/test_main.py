@@ -18,9 +18,13 @@ def test_main_train_online(filename, capsys):
     sim = random.choice(random_input)
     summary = random.choice(random_input)
     if filename is not None:
-        args = main.main(["train_online", sim, summary, filename, "--test_mode"])
+        args = main.main(
+            ["train_online", sim, summary, filename, "--test_mode", "--skip_wrappers"]
+        )
     else:
-        args = main.main(["train_online", sim, summary, "--test_mode"])
+        args = main.main(
+            ["train_online", sim, summary, "--test_mode", "--skip_wrappers"]
+        )
     out, err = capsys.readouterr()
     assert (
         out
@@ -49,10 +53,27 @@ def test_main_train_online_save_model(filename, save_model, capsys):
     summary = random.choice(random_input)
     if filename is None:
         with pytest.raises(DocoptExit):
-            main.main(["train_online", sim, summary, save_model, "--test_mode"])
+            main.main(
+                [
+                    "train_online",
+                    sim,
+                    summary,
+                    save_model,
+                    "--test_mode",
+                    "--skip_wrappers",
+                ]
+            )
     else:
         args = main.main(
-            ["train_online", sim, summary, filename, save_model, "--test_mode"]
+            [
+                "train_online",
+                sim,
+                summary,
+                filename,
+                save_model,
+                "--test_mode",
+                "--skip_wrappers",
+            ]
         )
         out, err = capsys.readouterr()
         assert out == (
@@ -80,9 +101,21 @@ def test_main_train_offline(filename, capsys):
     data = random.choice(random_input)
     summary = random.choice(random_input)
     if filename is not None:
-        args = main.main(["train_offline", sim, data, summary, filename])
+        args = main.main(
+            [
+                "train_offline",
+                sim,
+                data,
+                summary,
+                filename,
+                "--test_mode",
+                "--skip_wrappers",
+            ]
+        )
     else:
-        args = main.main(["train_offline", sim, data, summary])
+        args = main.main(
+            ["train_offline", sim, data, summary, "--test_mode", "--skip_wrappers"]
+        )
     out, err = capsys.readouterr()
     assert (
         out
@@ -111,9 +144,29 @@ def test_main_train_offline_save_model(filename, save_model, capsys):
     summary = random.choice(random_input)
     if filename is None:
         with pytest.raises(DocoptExit):
-            main.main(["train_offline", sim, summary, save_model])
+            main.main(
+                [
+                    "train_offline",
+                    sim,
+                    summary,
+                    save_model,
+                    "--test_mode",
+                    "--skip_wrappers",
+                ]
+            )
     else:
-        args = main.main(["train_offline", sim, data, summary, filename, save_model])
+        args = main.main(
+            [
+                "train_offline",
+                sim,
+                data,
+                summary,
+                filename,
+                save_model,
+                "--test_mode",
+                "--skip_wrappers",
+            ]
+        )
         out, err = capsys.readouterr()
         assert (
             out
@@ -137,7 +190,7 @@ def test_main_train_offline_save_model(filename, save_model, capsys):
 def test_main_generate_data(capsys):
     sim = random.choice(random_input)
     data = random.choice(random_input)
-    args = main.main(["generate_data", sim, data])
+    args = main.main(["generate_data", sim, data, "--test_mode", "--skip_wrappers"])
     out, err = capsys.readouterr()
     assert (
         out
@@ -162,9 +215,11 @@ def test_main_generate_data(capsys):
 def test_main_analyze_sim(filename, capsys):
     sim = random.choice(random_input)
     if filename is not None:
-        args = main.main(["analyze_sim", sim, filename])
+        args = main.main(
+            ["analyze_sim", sim, filename, "--test_mode", "--skip_wrappers"]
+        )
     else:
-        args = main.main(["analyze_sim", sim])
+        args = main.main(["analyze_sim", sim, "--test_mode", "--skip_wrappers"])
     out, err = capsys.readouterr()
     assert (
         out
@@ -189,7 +244,9 @@ def test_main_analyze_sim(filename, capsys):
 def test_main_evaluate(filename, capsys):
     sim = random.choice(random_input)
     data = random.choice(random_input)
-    args = main.main(["evaluate", sim, data, filename])
+    args = main.main(
+        ["evaluate", sim, data, filename, "--test_mode", "--skip_wrappers"]
+    )
     out, err = capsys.readouterr()
     assert (
         out

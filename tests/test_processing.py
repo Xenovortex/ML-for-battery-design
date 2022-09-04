@@ -2,16 +2,15 @@ import random
 import string
 
 import numpy as np
-
 import pytest
+
 from ML_for_Battery_Design.src.helpers.constants import (
     inference_settings,
     sim_model_collection,
     simulation_settings,
 )
 from ML_for_Battery_Design.src.helpers.processing import Processing
-
-models = ["linear_ode_system"]
+from tests.constants import models
 
 non_dict_input = [
     random.randint(-1000, 1000),  # int

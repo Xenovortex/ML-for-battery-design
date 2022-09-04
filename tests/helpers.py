@@ -1,4 +1,7 @@
+import os
+
 import ML_for_Battery_Design.src.main as main
+from ML_for_Battery_Design.src.helpers.constants import inference_settings
 
 
 def get_concrete_class(AbstractClass, *args):
@@ -24,7 +27,7 @@ def setup_user_args(mode, sim_model, save_model=False):
     elif mode == "generate_data":
         user_input = [mode, sim_model, "pytest_data"]
     elif mode == "analyze_sim":
-        user_input = [mode, sim_model, "pytest_file"]
+        user_input = [mode, sim_model]
     elif mode == "evaluate":
         user_input = [mode, sim_model, "pytest_data", "pytest_file"]
     else:
@@ -35,3 +38,10 @@ def setup_user_args(mode, sim_model, save_model=False):
     args = main.main(user_input)
 
     return args
+
+
+def check_file_exist(eval_key, model_name, expected_path):
+    if inference_settings[model_name]["evaluation"][eval_key]:
+        assert os.path.exists(expected_path)
+        if os.path.exists(expected_path):
+            os.remove(expected_path)

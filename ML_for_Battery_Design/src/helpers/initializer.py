@@ -1,6 +1,7 @@
 import os
 import pathlib
-from typing import Type
+import pickle
+from typing import Tuple, Type
 
 import h5py
 import pandas as pd
@@ -12,10 +13,7 @@ from bayesflow.trainers import Trainer
 from tqdm.autonotebook import tqdm
 
 from ML_for_Battery_Design.src.helpers.constants import (
-    architecture_settings,
-    inference_settings,
     sim_model_collection,
-    simulation_settings,
     summary_collection,
 )
 from ML_for_Battery_Design.src.helpers.evaluater import Evaluater
@@ -34,16 +32,28 @@ class Initializer:
         filename (str): name of files to save and read
         save_model (bool): If True, save amortizer checkpoints
         test_mode (bool): Run Initializer in test mode, reduce runtime for unit testing
+        architecture (dict): describes architecture of summary and inference network
+        inference (dict): describes data processing, data generation, training and evaluation settings
+        simulation (dict): describes simulation data generation settings
         sim_model (Type[SimulationModel]): simulation model allows for prior sampling and simulation data generation
         mode (str): mode in which main.py is executed
         file_manager (Type[FileManager]): generate save path strings for file organization
         trainer (bayesflow.Trainer): trainer for training BayesFlow (only in train_online and train_offline mode)
     """
 
-    def __init__(self, **kwargs: str) -> None:
+    def __init__(
+        self,
+        architecture_settings: dict,
+        inference_settings: dict,
+        simulation_settings: dict,
+        **kwargs: str
+    ) -> None:
         """Initializes :class:Initializer
 
         Args:
+            architecture_settings (dict): describes architecture of summary and inference network
+            inference_settings (dict): describes data processing, data generation, training and evaluation settings
+            simulation_settings (dict): describes simulation data generation settings
             **kwargs (str): keyword arguments received by main docopt interface
         """
         self.sim_model_name = kwargs["<sim_model>"]
@@ -52,30 +62,78 @@ class Initializer:
         self.filename = kwargs["<filename>"]
         self.save_model = bool(kwargs["--save_model"])
         self.test_mode = bool(kwargs["--test_mode"])
-
-        self.sim_model = self.get_sim_model()
+        if architecture_settings is not None:
+            if self.sim_model_name in architecture_settings:
+                self.architecture = architecture_settings[self.sim_model_name]
+            else:
+                raise ValueError(
+                    "{} - init: simulation model {} has no architecture settings".format(
+                        self.__class__.__name__, self.sim_model_name
+                    )
+                )
+        if inference_settings is not None:
+            if self.sim_model_name in inference_settings:
+                self.inference = inference_settings[self.sim_model_name]
+            else:
+                raise ValueError(
+                    "{} - init: simulation model {} has no inference settings".format(
+                        self.__class__.__name__, self.sim_model_name
+                    )
+                )
+        if inference_settings is not None:
+            if self.sim_model_name in simulation_settings:
+                self.simulation = simulation_settings[self.sim_model_name]
+            else:
+                raise ValueError(
+                    "{} - init: simulation model {} has no simulation settings".format(
+                        self.__class__.__name__, self.sim_model_name
+                    )
+                )
 
         if bool(kwargs["train_online"]):
             self.mode = "train_online"
             self.data_name = "online"
             kwargs["<data_name>"] = "online"
             self.file_manager = FileManager(self.mode, **kwargs)
+            self.sim_model = self.get_sim_model()
             self.trainer = self.get_trainer()
-            self.evaluater = self.get_evaluater()
+            self.evaluater = self.get_evaluater(self.trainer)
         elif bool(kwargs["train_offline"]):
             self.mode = "train_offline"
             self.file_manager = FileManager(self.mode, **kwargs)
+            self.sim_model = self.get_sim_model()
             self.trainer = self.get_trainer()
-            self.evaluater = self.get_evaluater()
+            self.evaluater = self.get_evaluater(self.trainer)
         elif bool(kwargs["generate_data"]):
             self.mode = "generate_data"
             self.file_manager = FileManager(self.mode, **kwargs)
+            self.sim_model = self.get_sim_model()
         elif bool(kwargs["analyze_sim"]):
             self.mode = "analyze_sim"
             self.file_manager = FileManager(self.mode, **kwargs)
+            self.sim_model = self.get_sim_model()
+            self.evaluater = self.get_evaluater()
         elif bool(kwargs["evaluate"]):
             self.mode = "evaluate"
             self.file_manager = FileManager(self.mode, **kwargs)
+            (
+                self.summary_net_name,
+                self.architecture,
+                self.inference,
+                self.simulation,
+            ) = self.load_setup()
+            self.update_filemanager()
+            self.sim_model = self.get_sim_model()
+            self.trainer = self.get_trainer()
+            self.evaluater = self.get_evaluater(self.trainer)
+
+    def update_filemanager(self) -> None:
+        """Update filemanager attributes"""
+        self.file_manager.mode = self.mode
+        self.file_manager.sim_model_name = self.sim_model_name
+        self.file_manager.summary_net_name = self.summary_net_name
+        self.file_manager.data_name = self.data_name
+        self.file_manager.filename = self.filename
 
     def get_sim_model(self) -> Type[SimulationModel]:
         """Returns simulation model
@@ -83,16 +141,8 @@ class Initializer:
         Returns:
             sim_model (Type[SimulationModel]): simulation model allows for prior sampling and simulation data generation
         """
-        if self.sim_model_name in simulation_settings:
-            sim_settings = simulation_settings[self.sim_model_name]
-        else:
-            raise ValueError(
-                "{} - get_sim_model: {} not found in simulation settings".format(
-                    self.__class__.__name__, self.sim_model_name
-                )
-            )
         if self.sim_model_name in sim_model_collection:
-            sim_model = sim_model_collection[self.sim_model_name](**sim_settings)
+            sim_model = sim_model_collection[self.sim_model_name](**self.simulation)
         else:
             raise ValueError(
                 "{} - get_sim_model: {} is not a valid simulation model".format(
@@ -107,25 +157,18 @@ class Initializer:
         Returns:
             summary_net (Type[tf.keras.Model]): summary network of BayesFlow
         """
-        if self.sim_model_name in architecture_settings:
-            if self.summary_net_name in architecture_settings[self.sim_model_name]:
-                summary_architecture = architecture_settings[self.sim_model_name][
-                    self.summary_net_name
-                ]
-            else:
-                raise ValueError(
-                    "{} - get_summary_net: {} not found in architecture settings for {} simulation model".format(
-                        self.__class__.__name__,
-                        self.summary_net_name,
-                        self.sim_model_name,
-                    )
-                )
+
+        if self.summary_net_name in self.architecture:
+            summary_architecture = self.architecture[self.summary_net_name]
         else:
             raise ValueError(
-                "{} - get_summary_net: simulation model {} has no architecture settings".format(
-                    self.__class__.__name__, self.sim_model_name
+                "{} - get_summary_net: {} not found in architecture settings for {} simulation model".format(
+                    self.__class__.__name__,
+                    self.summary_net_name,
+                    self.sim_model_name,
                 )
             )
+
         if self.summary_net_name in summary_collection:
             meta_dict = build_meta_dict({}, summary_architecture)
             summary_net = summary_collection[self.summary_net_name](meta_dict)
@@ -144,23 +187,16 @@ class Initializer:
             inference_net (Type[InvertibleNetwork]): conditional invertible neural network of BayesFlow
         """
         num_params = self.sim_model.num_hidden_params
-        if self.sim_model_name in architecture_settings:
-            if "INN" in architecture_settings[self.sim_model_name]:
-                inference_architecture = architecture_settings[self.sim_model_name][
-                    "INN"
-                ]
-            else:
-                raise ValueError(
-                    "{} - get_inference_net: INN not found in architecture settings for {} simulation model".format(
-                        self.__class__.__name__, self.sim_model_name
-                    )
-                )
+
+        if "INN" in self.architecture:
+            inference_architecture = self.architecture["INN"]
         else:
             raise ValueError(
-                "{} - get_inference_net: {} is not a valid simulation model".format(
+                "{} - get_inference_net: INN not found in architecture settings for {} simulation model".format(
                     self.__class__.__name__, self.sim_model_name
                 )
             )
+
         inference_net = InvertibleNetwork(
             {**{"n_params": num_params}, **inference_architecture}
         )
@@ -175,7 +211,9 @@ class Initializer:
         summary_net = self.get_summary_net()
         inference_net = self.get_inference_net()
         amortizer = AmortizedPosterior(
-            inference_net, summary_net, name="{}_{}_amortizer"
+            inference_net,
+            summary_net,
+            name="{}_{}_amortizer".format(self.sim_model_name, self.summary_net_name),
         )
         return amortizer
 
@@ -185,25 +223,20 @@ class Initializer:
         Returns:
             configurator (Type[Processing]): object for handling  preprocessing pior samples and simulation data
         """
-        if self.sim_model_name in inference_settings:
-            if "processing" in inference_settings[self.sim_model_name]:
-                configurator = Processing(
-                    inference_settings[self.sim_model_name]["processing"],
-                    self.sim_model.prior_means,
-                    self.sim_model.prior_stds,
-                )
-            else:
-                raise ValueError(
-                    "{} - get_configurator: processing not found in inference settings for {} simulation model".format(
-                        self.__class__.__name__, self.sim_model_name
-                    )
-                )
+
+        if "processing" in self.inference:
+            configurator = Processing(
+                self.inference["processing"],
+                self.sim_model.prior_means,
+                self.sim_model.prior_stds,
+            )
         else:
             raise ValueError(
-                "{} - get_configurator: {} is not a valid simulation model".format(
+                "{} - get_configurator: processing not found in inference settings for {} simulation model".format(
                     self.__class__.__name__, self.sim_model_name
                 )
             )
+
         return configurator
 
     def get_trainer(self) -> Type[Trainer]:
@@ -219,23 +252,23 @@ class Initializer:
             amortizer=amortizer,
             generative_model=self.sim_model.generative_model,
             configurator=configurator,
-            learning_rate=inference_settings[self.sim_model_name]["training"]["lr"],
+            learning_rate=self.inference["training"]["lr"],
             checkpoint_path=save_model_path,
+            optional_stopping=False,
         )
         return trainer
 
-    def get_evaluater(self) -> Type[Evaluater]:
+    def get_evaluater(self, trainer: Type[Trainer] = None) -> Type[Evaluater]:
         """Returns evaluater
 
         Returns:
             evaluater (Type[Evaluater]): object for evaluating BayesFlow and simulation model
         """
-        trainer = self.get_trainer()
         evaluater = Evaluater(
             self.sim_model,
+            self.simulation["plot_settings"],
+            self.inference["evaluation"],
             trainer,
-            simulation_settings[self.sim_model_name]["plot_settings"],
-            inference_settings[self.sim_model_name]["evaluation"],
         )
         return evaluater
 
@@ -245,8 +278,55 @@ class Initializer:
         Args:
             losses (Type[pd.DataFrame]): DataFrame to save
         """
+        if self.mode != "train_online" and self.mode != "train_offline":
+            raise ValueError(
+                "{} - save_losses: main.py was executed in {} mode, but needs to be in train_online or train_offline mode".format(
+                    self.__class__.__name__, self.mode
+                )
+            )
         pathlib.Path(self.file_manager("result")).mkdir(parents=True, exist_ok=True)
         losses.to_pickle(os.path.join(self.file_manager("result"), "losses.pickle"))
+
+    def save_setup(self) -> None:
+        """Save setup to pickle file"""
+        if self.mode != "train_online" and self.mode != "train_offline":
+            raise ValueError(
+                "{} - save_setup: main.py was executed in {} mode, but needs to be in train_online or train_offline mode".format(
+                    self.__class__.__name__, self.mode
+                )
+            )
+        pathlib.Path(self.file_manager("model")).mkdir(parents=True, exist_ok=True)
+        assert os.path.exists(self.file_manager("model"))
+        with open(
+            os.path.join(self.file_manager("model"), "setup.pickle"), "wb"
+        ) as file:
+            pickle.dump(
+                [
+                    self.summary_net_name,
+                    self.architecture,
+                    self.inference,
+                    self.simulation,
+                ],
+                file,
+                pickle.HIGHEST_PROTOCOL,
+            )
+            assert os.path.exists(
+                os.path.join(self.file_manager("model"), "setup.pickle")
+            )
+            print(os.path.join(self.file_manager("model"), "setup.pickle"))
+
+    def load_setup(self) -> Tuple[str, dict, dict, dict]:
+        """Load setup from pickle file and reconstruct trainer with evaluater
+
+        Returns:
+            trainer (Type[Trainer]): BayesFlow trainer
+            evaluater (Type[Evaluater]): Class for evaluating BayesFlow performance
+        """
+        with open(
+            os.path.join(self.file_manager("model"), "setup.pickle"), "rb"
+        ) as file:
+            summary_net_name, architecture, inference, simulation = pickle.load(file)
+        return summary_net_name, architecture, inference, simulation
 
     def load_hdf5_data(self) -> dict:
         """Load pre-generated data for offline training
@@ -281,14 +361,10 @@ class Initializer:
         save_path = os.path.join(parent_folder, "data.h5")
 
         chunk_size = (
-            inference_settings[self.sim_model_name]["generate_data"]["chunk_size"]
-            if not self.test_mode
-            else 4
+            self.inference["generate_data"]["chunk_size"] if not self.test_mode else 4
         )
         total_n_sim = (
-            inference_settings[self.sim_model_name]["generate_data"]["total_n_sim"]
-            if not self.test_mode
-            else 8
+            self.inference["generate_data"]["total_n_sim"] if not self.test_mode else 8
         )
         num_chunks = total_n_sim // chunk_size
 

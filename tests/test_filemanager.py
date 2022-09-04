@@ -6,18 +6,6 @@ import pytest
 
 from ML_for_Battery_Design.src.helpers.filemanager import FileManager
 
-valid_modes = [
-    "train_online",
-    "train_offline",
-    "generate_data",
-    "analyze_sim",
-    "evaluate",
-]
-
-valid_sim = ["linear_ode_system"]
-
-valid_summary = ["FC", "LSTM", "CNN"]
-
 random_input = [
     "",
     "".join(random.choices(string.ascii_letters, k=random.randrange(10))),

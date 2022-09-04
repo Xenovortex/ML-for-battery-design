@@ -20,9 +20,7 @@ from ML_for_Battery_Design.src.helpers.constants import (
 from ML_for_Battery_Design.src.helpers.evaluater import Evaluater
 from ML_for_Battery_Design.src.helpers.processing import Processing
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
-from tests.constants import AUTO_CLOSE_PLOTS
-
-models = ["linear_ode_system"]
+from tests.constants import AUTO_CLOSE_PLOTS, models
 
 non_dict_str_input = [
     random.randint(-1000, 1000),  # int
@@ -70,9 +68,9 @@ def test_evaluater_init(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     assert isinstance(evaluater.sim_model, SimulationModel)
@@ -80,7 +78,6 @@ def test_evaluater_init(model_name):
     assert isinstance(evaluater.trainer, Trainer)
     assert isinstance(evaluater.plot_settings, dict)
     assert isinstance(evaluater.eval_settings, dict)
-    assert isinstance(evaluater.test_dict, dict)
     assert evaluater.plot_settings == simulation_settings[model_name]["plot_settings"]
     assert evaluater.eval_settings == inference_settings[model_name]["evaluation"]
 
@@ -110,9 +107,9 @@ def test_evaluater_evaluate_sim_model(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         dummy_plot_settings,
         dummy_eval_settings,
+        dummy_trainer,
     )
     evaluater.evaluate_sim_model("pytest")
 
@@ -144,9 +141,9 @@ def test_evaluater_load_losses_dataframe(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     evaluater.load_losses(dummy_losses)
@@ -169,9 +166,9 @@ def test_evaluater_load_losses_path(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     evaluater.load_losses(os.path.join("pytest", "losses.pickle"))
@@ -192,9 +189,9 @@ def test_evaluater_load_losses_type_error(model_name, dummy_loss, capsys):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     with pytest.raises(TypeError):
@@ -219,9 +216,9 @@ def test_evaluater_plot_wrapper(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         plot_settings,
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     def dummy_plot(**kwargs):
@@ -247,9 +244,9 @@ def test_evaluater_plot_wrapper_no_title(model_name, capsys):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         plot_settings,
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     def dummy_plot(**kwargs):
@@ -278,9 +275,9 @@ def test_evaluater_plot_wrapper_no_filename(model_name, capsys):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         plot_settings,
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     def dummy_plot(**kwargs):
@@ -310,9 +307,9 @@ def test_evaluater_generate_test_data(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         inference_settings[model_name]["evaluation"],
+        dummy_trainer,
     )
 
     test_dict = evaluater.generate_test_data(batch_size, n_samples)
@@ -375,6 +372,76 @@ def test_evaluater_generate_test_data(model_name):
 
 
 @pytest.mark.parametrize("model_name", models)
+def test_evaluater_evaluate_bayesflow_model_no_trainer(model_name, capsys):
+    sim_model, _ = setup_dummy_objects(model_name)
+
+    dummy_eval_settings = {
+        "batch_size": random.randint(2, 8),
+        "n_samples": random.randint(2, 8),
+        "plot_prior": False,
+        "plot_sim_data": False,
+        "plot_loss": False,
+        "plot_latent": False,
+        "plot_sbc_histogram": False,
+        "plot_sbc_ecdf": False,
+        "plot_true_vs_estimated": False,
+        "plot_posterior": False,
+        "plot_post_with_prior": False,
+        "plot_resimulation": False,
+    }
+
+    evaluater = Evaluater(
+        sim_model,
+        simulation_settings[model_name]["plot_settings"],
+        dummy_eval_settings,
+        None,
+    )
+
+    with pytest.raises(ValueError):
+        evaluater.evaluate_bayesflow_model("pytest")
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == "{} - evaluate_bayesflow_model: no losses provided".format(
+            evaluater.__class__.__name__
+        )
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_evaluater_evaluate_bayesflow_model_no_losses(model_name, capsys):
+    sim_model, dummy_trainer = setup_dummy_objects(model_name)
+
+    dummy_eval_settings = {
+        "batch_size": random.randint(2, 8),
+        "n_samples": random.randint(2, 8),
+        "plot_prior": False,
+        "plot_sim_data": False,
+        "plot_loss": True,
+        "plot_latent": False,
+        "plot_sbc_histogram": False,
+        "plot_sbc_ecdf": False,
+        "plot_true_vs_estimated": False,
+        "plot_posterior": False,
+        "plot_post_with_prior": False,
+        "plot_resimulation": False,
+    }
+
+    evaluater = Evaluater(
+        sim_model,
+        simulation_settings[model_name]["plot_settings"],
+        dummy_eval_settings,
+        dummy_trainer,
+    )
+
+    with pytest.raises(ValueError):
+        evaluater.evaluate_bayesflow_model()
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == "{} - evaluate_bayesflow_model: no losses provided".format(
+            evaluater.__class__.__name__
+        )
+
+
+@pytest.mark.parametrize("model_name", models)
 def test_evaluater_evaluate_bayesflow_model(model_name):
     sim_model, dummy_trainer = setup_dummy_objects(model_name)
     num_iterations = random.randint(1, 10)
@@ -404,9 +471,9 @@ def test_evaluater_evaluate_bayesflow_model(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         dummy_eval_settings,
+        dummy_trainer,
     )
 
     evaluater.load_losses(dummy_losses)
@@ -514,9 +581,9 @@ def test_evaluater_evaluate_bayesflow_model_plot_sbc_hist(model_name):
 
     evaluater = Evaluater(
         sim_model,
-        dummy_trainer,
         simulation_settings[model_name]["plot_settings"],
         dummy_eval_settings,
+        dummy_trainer,
     )
 
     evaluater.evaluate_bayesflow_model("pytest")

@@ -216,7 +216,14 @@ def test_main_analyze_sim(filename, capsys):
     sim = random.choice(random_input)
     if filename is not None:
         args = main.main(
-            ["analyze_sim", sim, filename, "--test_mode", "--skip_wrappers"]
+            [
+                "analyze_sim",
+                sim,
+                "pytest_data",
+                filename,
+                "--test_mode",
+                "--skip_wrappers",
+            ]
         )
     else:
         args = main.main(["analyze_sim", sim, "--test_mode", "--skip_wrappers"])
@@ -235,7 +242,10 @@ def test_main_analyze_sim(filename, capsys):
     assert not bool(args["evaluate"])
     assert args["<sim_model>"] == sim
     assert args["<filename>"] == filename
-    assert args["<data_name>"] is None
+    if filename is None:
+        assert args["<data_name>"] is None
+    else:
+        assert args["<data_name>"] == "pytest_data"
     assert args["<summary_net>"] is None
     assert not args["--save_model"]
 

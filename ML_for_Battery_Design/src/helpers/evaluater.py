@@ -27,9 +27,9 @@ class Evaluater:
     def __init__(
         self,
         sim_model: Type[SimulationModel],
-        trainer: Type[Trainer],
         plot_settings: dict,
         evaluation_settings: dict,
+        trainer: Type[Trainer],
     ) -> None:
         """Initializes :class:Evaluater
 
@@ -41,15 +41,12 @@ class Evaluater:
             evaluation_settings (dict): settings for evaluation
         """
         self.sim_model = sim_model
-        self.amortizer = trainer.amortizer
-        self.trainer = trainer
         self.plot_settings = plot_settings
         self.eval_settings = evaluation_settings
-        self.losses: Union[Type[pd.DataFrame], str]
-
-        self.test_dict = self.generate_test_data(
-            self.eval_settings["batch_size"], self.eval_settings["n_samples"]
-        )
+        self.trainer = trainer
+        if self.trainer is not None:
+            self.amortizer = trainer.amortizer
+        self.losses: Union[Type[pd.DataFrame], str, bool] = False
 
     def evaluate_sim_model(self, parent_folder: str = None) -> None:
         """Evaluates simulation model
@@ -65,7 +62,7 @@ class Evaluater:
             print("Plotting simulation data ...")
             self.sim_model.plot_sim_data(parent_folder)
 
-    def load_losses(self, losses: Union[Type[pd.DataFrame], str]) -> None:
+    def load_losses(self, losses: Union[Type[pd.DataFrame], str, bool]) -> None:
         """Load recorded losses, either as DataFrame or path to pickle file
 
         Args:
@@ -161,7 +158,24 @@ class Evaluater:
         Args:
             parent_folder (str, optional): path to parent folder to save generated plots. Defaults to None.
         """
+        if self.trainer is None:
+            raise ValueError(
+                "{} - evaluate_bayesflow_model: no trainer provided".format(
+                    self.__class__.__name__
+                )
+            )
+
+        self.test_dict = self.generate_test_data(
+            self.eval_settings["batch_size"], self.eval_settings["n_samples"]
+        )
+
         if self.eval_settings["plot_loss"]:
+            if isinstance(self.losses, bool):
+                raise ValueError(
+                    "{} - evaluate_bayesflow_model: no losses provided".format(
+                        self.__class__.__name__
+                    )
+                )
             print("Plotting training loss...")
             kwargs = {"history": self.losses}
             self.plot_wrapper(

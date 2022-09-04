@@ -1,13 +1,19 @@
 import os
 
-from ML_for_Battery_Design.src.helpers.constants import inference_settings
+from ML_for_Battery_Design.src.helpers.constants import (
+    architecture_settings,
+    inference_settings,
+    simulation_settings,
+)
 from ML_for_Battery_Design.src.helpers.initializer import Initializer
 
 
 def train_online(**kwargs: str) -> None:
     """Wrapper for executing online training based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
-        initializer = Initializer(**kwargs)
+        initializer = Initializer(
+            architecture_settings, inference_settings, simulation_settings, **kwargs
+        )
         train_settings = inference_settings[initializer.sim_model_name]["training"]
         if kwargs["--test_mode"]:
             train_settings["num_epochs"] = 1
@@ -18,6 +24,7 @@ def train_online(**kwargs: str) -> None:
             iterations_per_epoch=train_settings["it_per_epoch"],
             batch_size=train_settings["batch_size"],
         )
+        initializer.save_setup()
         initializer.save_losses(losses)
         initializer.evaluater.load_losses(losses)
         initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
@@ -29,7 +36,9 @@ def train_online(**kwargs: str) -> None:
 def train_offline(**kwargs: str) -> None:
     """Wrapper for executing offline training based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
-        initializer = Initializer(**kwargs)
+        initializer = Initializer(
+            architecture_settings, inference_settings, simulation_settings, **kwargs
+        )
         train_settings = inference_settings[initializer.sim_model_name]["training"]
         if kwargs["--test_mode"]:
             train_settings["num_epochs"] = 1
@@ -43,6 +52,7 @@ def train_offline(**kwargs: str) -> None:
             it_per_epoch=train_settings["it_per_epoch"],
             batch_size=train_settings["batch_size"],
         )
+        initializer.save_setup()
         initializer.save_losses(losses)
         initializer.evaluater.load_losses(losses)
         initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
@@ -54,7 +64,9 @@ def train_offline(**kwargs: str) -> None:
 def generate_data(**kwargs: str) -> None:
     """Wrapper for generating simulation data based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
-        initializer = Initializer(**kwargs)
+        initializer = Initializer(
+            architecture_settings, inference_settings, simulation_settings, **kwargs
+        )
         data_settings = inference_settings[initializer.sim_model_name]["generate_data"]
         if kwargs["--test_mode"]:
             data_settings["total_n_sim"] = 8
@@ -65,16 +77,20 @@ def generate_data(**kwargs: str) -> None:
 def analyze_sim(**kwargs: str) -> None:
     """Wrapper for analyzing simulation model prior and simulation data based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
-        initializer = Initializer(**kwargs)
+        initializer = Initializer(
+            architecture_settings, inference_settings, simulation_settings, **kwargs
+        )
         initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
 
 
 def evaluate(**kwargs: str) -> None:
     """Wrapper for evaluating a trained model based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
-        initializer = Initializer(**kwargs)
+        initializer = Initializer(None, None, None, **kwargs)
         initializer.trainer.load_pretrained_network()
         initializer.evaluater.load_losses(
-            os.path.join(initializer.file_manager("results"), "losses.pickle")
+            os.path.join(initializer.file_manager("result"), "losses.pickle")
         )
-        initializer.evaluater.evaluate_bayesflow_model()
+        initializer.evaluater.evaluate_bayesflow_model(
+            initializer.file_manager("result")
+        )

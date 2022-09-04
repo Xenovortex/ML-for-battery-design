@@ -41,9 +41,12 @@ class FileManager:
                 "models", self.sim_model_name, self.data_name, self.filename
             )
         elif file_type == "result":
-            path = os.path.join(
-                "results", self.sim_model_name, self.data_name, self.filename
-            )
+            if self.data_name is not None:
+                path = os.path.join(
+                    "results", self.sim_model_name, self.data_name, self.filename
+                )
+            else:
+                path = os.path.join("results", self.sim_model_name)
         else:
             raise ValueError(
                 "{} - call: {} is not a valid file_type. Valid options are: data, model, result".format(

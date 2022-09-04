@@ -4,6 +4,7 @@ import pickle
 from typing import Tuple, Type
 
 import h5py
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 from bayesflow.amortized_inference import AmortizedPosterior
@@ -223,12 +224,16 @@ class Initializer:
         Returns:
             configurator (Type[Processing]): object for handling  preprocessing pior samples and simulation data
         """
-
+        data_dict = self.sim_model.generative_model(batch_size=1000)
+        sim_mean = np.mean(data_dict["sim_data"])
+        sim_std = np.std(data_dict["sim_data"])
         if "processing" in self.inference:
             configurator = Processing(
                 self.inference["processing"],
                 self.sim_model.prior_means,
                 self.sim_model.prior_stds,
+                sim_mean,
+                sim_std,
             )
         else:
             raise ValueError(

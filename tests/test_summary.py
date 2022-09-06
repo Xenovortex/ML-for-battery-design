@@ -532,6 +532,7 @@ class ConvLSTM(tf.test.TestCase):
                 (convlstm_num_blocks - 1)
                 * [
                     ConvLSTM1D,
+                    ConvLSTM1D,
                     BatchNormalization,
                     MaxPool2D,
                 ]
@@ -539,7 +540,7 @@ class ConvLSTM(tf.test.TestCase):
                 + [GlobalAveragePooling1D]
             )
             expected_activation += (
-                (convlstm_num_blocks - 1) * [tanh, None, None] + [tanh] + [None]
+                (convlstm_num_blocks - 1) * [tanh, tanh, None, None] + [tanh] + [None]
             )
             temp_max_time_iter = max_time_iter
             temp_nr = nr
@@ -549,7 +550,7 @@ class ConvLSTM(tf.test.TestCase):
                         temp_max_time_iter // 2 if pool_time else temp_max_time_iter
                     )
                     new_nr = temp_nr // 2 if pool_space else temp_nr
-                    expected_layer_output_shape += 2 * [
+                    expected_layer_output_shape += 3 * [
                         (batch_size, temp_max_time_iter, temp_nr, num_filter)
                     ] + [(batch_size, new_max_time_iter, new_nr, num_filter)]
                     temp_max_time_iter = new_max_time_iter
@@ -604,7 +605,7 @@ class ConvLSTM(tf.test.TestCase):
         if num_filters is not None:
             self.assertEqual(
                 len(model.ConvLSTM.layers),
-                (convlstm_num_blocks - 1) * 3 + 2 + fc_num_layer + 1,
+                (convlstm_num_blocks - 1) * 4 + 2 + fc_num_layer + 1,
             )
         else:
             self.assertEqual(

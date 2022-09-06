@@ -229,6 +229,15 @@ class ConvLSTM_Network(tf.keras.Model):
                             return_sequences=True,
                         )
                     )
+                    self.ConvLSTM.add(
+                        ConvLSTM1D(
+                            num_filters,
+                            kernel_size=3,
+                            strides=1,
+                            padding="same",
+                            return_sequences=True,
+                        )
+                    )
                     if meta["batch_norm"]:
                         self.ConvLSTM.add(BatchNormalization())
 

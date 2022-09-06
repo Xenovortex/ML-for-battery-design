@@ -548,7 +548,7 @@ def test_linear_ode_system_plot_resimulation_one_plot(use_complex):
 
 
 @pytest.mark.parametrize("use_complex", [True, False])
-def test_linear_ode_system_plot_resimulation_multiple_plot(use_complex):
+def test_linear_ode_system_plot_resimulation_multiple_plots(use_complex):
     init_data = LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS
     init_data["plot_settings"]["num_plots"] = 8
     init_data["plot_settings"]["show_title"] = True

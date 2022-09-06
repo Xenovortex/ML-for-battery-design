@@ -104,8 +104,8 @@ class Processing:
         if self.settings["remove_nan"]:
             if sim_data.ndim == 3:
                 keep_idx = np.all(np.isfinite(sim_data), axis=(1, 2))
-            # elif sim_data.ndim == 4:
-            #    keep_idx = np.all(np.isfinite(sim_data), axis=(1, 2, 3))
+            elif sim_data.ndim == 4:
+                keep_idx = np.all(np.isfinite(sim_data), axis=(1, 2, 3))
             if not np.all(keep_idx):
                 print("Invalid value encountered...removing from batch")
             params = params[keep_idx]

@@ -8,7 +8,13 @@ from ML_for_Battery_Design.src.settings.linear_ode_settings import (
     LINEAR_ODE_SYSTEM_INFERENCE_SETTINGS,
     LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS,
 )
+from ML_for_Battery_Design.src.settings.SPM_battery_settings import (
+    SPM_BATTERY_MODEL_ARCHITECTURES,
+    SPM_BATTERY_MODEL_INFERENCE_SETTINGS,
+    SPM_BATTERY_MODEL_SIMULATION_SETTINGS,
+)
 from ML_for_Battery_Design.src.simulation.linear_ode_model import LinearODEsystem
+from ML_for_Battery_Design.src.simulation.SPM_battery import SPMBatteryModel
 
 summary_collection = {
     "FC": FC_Network,
@@ -16,19 +22,22 @@ summary_collection = {
     "CNN": CNN_Network,
 }
 
-sim_model_collection = {"linear_ode_system": LinearODEsystem}
+sim_model_collection = {"linear_ode_system": LinearODEsystem, "SPM": SPMBatteryModel}
 
 architecture_settings = {
     "linear_ode_system": LINEAR_ODE_SYSTEM_ARCHITECTURES,
+    "SPM": SPM_BATTERY_MODEL_ARCHITECTURES,
     "pytest": {"pytest": {}},  # needed for unit testing
 }
 
 simulation_settings = {
     "linear_ode_system": LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS,
+    "SPM": SPM_BATTERY_MODEL_SIMULATION_SETTINGS,
     "pytest": {},  # needed for unit testing
 }
 
 inference_settings = {
     "linear_ode_system": LINEAR_ODE_SYSTEM_INFERENCE_SETTINGS,
+    "SPM": SPM_BATTERY_MODEL_INFERENCE_SETTINGS,
     "pytest": {},  # needed for unit testing
 }

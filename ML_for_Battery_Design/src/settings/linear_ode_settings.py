@@ -59,11 +59,11 @@ LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS = {
 #                             Architecture Settings                            #
 # ---------------------------------------------------------------------------- #
 
-LINAER_ODE_SYSTEM_FC_ARCHITECTURE = MetaDictSetting(
+LINEAR_ODE_SYSTEM_FC_ARCHITECTURE = MetaDictSetting(
     meta_dict={"units": [32, 32, 32], "activation": "relu", "summary_dim": 32}
 )
 
-LINAER_ODE_SYSTEM_LSTM_ARCHITECTURE = MetaDictSetting(
+LINEAR_ODE_SYSTEM_LSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
         "lstm_units": [64, 64, 64],
         "fc_units": [64],
@@ -77,8 +77,8 @@ LINEAR_ODE_SYSTEM_INN_ARCHITECTURE = {
 }
 
 LINEAR_ODE_SYSTEM_ARCHITECTURES = {
-    "FC": LINAER_ODE_SYSTEM_FC_ARCHITECTURE,
-    "LSTM": LINAER_ODE_SYSTEM_LSTM_ARCHITECTURE,
+    "FC": LINEAR_ODE_SYSTEM_FC_ARCHITECTURE,
+    "LSTM": LINEAR_ODE_SYSTEM_LSTM_ARCHITECTURE,
     "INN": LINEAR_ODE_SYSTEM_INN_ARCHITECTURE,
 }
 
@@ -90,14 +90,14 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 
 LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
     "lr": 0.001,
-    "num_epochs": 200,
-    "it_per_epoch": 1000,
+    "num_epochs": 2,
+    "it_per_epoch": 10,
     "batch_size": 32,
 }
 
 LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
     "norm_prior": True,
-    "norm_sim_data": None,
+    "norm_sim_data": "mean_std",
     "remove_nan": True,
     "float32_cast": True,
 }

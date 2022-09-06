@@ -61,7 +61,7 @@ reject_bound = [
     ({"reject_bound_real": None, "reject_bound_complex": None}, 9 * [False]),
 ]
 
-# ---------------- Test LinearODEsystem Class Inititialization --------------- #
+# ----------------- Test LinearODEsystem Class Initialization ---------------- #
 
 
 @pytest.mark.parametrize("use_complex", [True, False])
@@ -294,7 +294,10 @@ def test_linear_ode_system_sample_to_kwargs_method():
             assert value == dummy_sample[counter]
             counter += 1
         else:
-            assert value == dummy_sample[key]
+            assert (
+                value
+                == LINEAR_ODE_SYSTEM_SIMULATION_SETTINGS["default_param_values"][key]
+            )
 
 
 def test_linear_ode_system_uniform_prior_method():
@@ -458,7 +461,7 @@ def test_linear_ode_system_plot_sim_data_multiple_row_plots(use_complex):
     test_object = LinearODEsystem(**init_data)
     fig, ax, params, sim_data = test_object.plot_sim_data(parent_folder="pytest")
     assert isinstance(fig, Figure)
-    assert isinstance(ax, np.flatiter)
+    assert isinstance(ax, Axes)
     assert isinstance(params, np.ndarray)
     assert isinstance(sim_data, np.ndarray)
     assert params.ndim == 2
@@ -468,11 +471,10 @@ def test_linear_ode_system_plot_sim_data_multiple_row_plots(use_complex):
     assert sim_data.shape[0] == init_data["plot_settings"]["num_plots"]
     assert sim_data.shape[1] == init_data["simulation_settings"]["max_time_iter"]
     assert sim_data.shape[2] == test_object.num_features
-    for k in range(init_data["plot_settings"]["num_plots"]):
-        for i in range(test_object.num_features):
-            x_plot, y_plot = ax[k].lines[i].get_xydata().T
-            assert np.array_equal(x_plot, test_object.t)
-            assert np.array_equal(y_plot, sim_data[k, :, i])
+    for i in range(test_object.num_features):
+        x_plot, y_plot = ax.lines[i].get_xydata().T
+        assert np.array_equal(x_plot, test_object.t)
+        assert np.array_equal(y_plot, sim_data[-1, :, i])
     assert os.path.exists(os.path.join("pytest", "sim_data.png"))
     if os.path.exists(os.path.join("pytest", "sim_data.png")):
         os.remove(os.path.join("pytest", "sim_data.png"))
@@ -583,7 +585,7 @@ def test_linear_ode_system_plot_resimulation_multiple_plot(use_complex):
     )
 
     assert isinstance(fig, Figure)
-    assert isinstance(ax, np.flatiter)
+    assert isinstance(ax, Axes)
     assert isinstance(resim_data, np.ndarray)
     assert resim_data.ndim == 4
     assert resim_data.shape[0] == init_data["plot_settings"]["num_plots"]

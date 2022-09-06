@@ -5,9 +5,12 @@ from bayesflow.default_settings import MetaDictSetting
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
     LSTM,
+    BatchNormalization,
     Conv2D,
+    ConvLSTM1D,
     Dense,
     Flatten,
+    GlobalAveragePooling1D,
     GlobalAveragePooling2D,
     MaxPool2D,
 )
@@ -97,7 +100,7 @@ class CNN_Network(tf.keras.Model):
     """
 
     def __init__(self, meta: Type[MetaDictSetting]) -> None:
-        """Initializes :class:CNN_network
+        """Initializes :class:CNN_Network
 
         Args:
             meta (Type[MetaDictSetting]): contains settings to construct network architecture
@@ -185,4 +188,111 @@ class CNN_Network(tf.keras.Model):
                 )
 
         out = self.CNN(x)
+        return out
+
+
+class ConvLSTM_Network(tf.keras.Model):
+    """Implements a 1D Convolutional LSTM network architecture
+
+    Attributes:
+        ConvLSTM (tf.keras.Model): 1D Convolutional LSTM network architecture
+    """
+
+    def __init__(self, meta: Type[MetaDictSetting]) -> None:
+        """Initializes :class:ConvLSTM_Network
+
+        Args:
+            meta (Type[MetaDictSetting]): contains settings to construct network architecture
+        """
+        super(ConvLSTM_Network, self).__init__()
+
+        time_pool_size = meta["pool_time"] + 1
+        space_pool_size = meta["pool_space"] + 1
+
+        self.num_convlstm_blocks = (
+            len(meta["num_filters"]) if meta["num_filters"] is not None else 0
+        )
+
+        self.min_input_time_dim = time_pool_size**self.num_convlstm_blocks
+        self.min_input_space_dim = space_pool_size**self.num_convlstm_blocks
+
+        self.ConvLSTM = Sequential()
+        if meta["num_filters"] is not None:
+            if len(meta["num_filters"]) > 1:
+                for num_filters in meta["num_filters"][:-1]:
+                    self.ConvLSTM.add(
+                        ConvLSTM1D(
+                            num_filters,
+                            kernel_size=3,
+                            strides=1,
+                            padding="same",
+                            return_sequences=True,
+                        )
+                    )
+                    if meta["batch_norm"]:
+                        self.ConvLSTM.add(BatchNormalization())
+
+                    self.ConvLSTM.add(
+                        MaxPool2D(pool_size=(time_pool_size, space_pool_size))
+                    )
+
+            self.ConvLSTM.add(
+                ConvLSTM1D(
+                    meta["num_filters"][-1],
+                    kernel_size=3,
+                    strides=1,
+                    padding="same",
+                    return_sequences=False,
+                )
+            )
+            self.ConvLSTM.add(GlobalAveragePooling1D())
+        else:
+            self.ConvLSTM.add(Flatten())
+        if meta["units"] is not None:
+            for unit in meta["units"]:
+                self.ConvLSTM.add(Dense(unit, activation=meta["fc_activation"]))
+        self.ConvLSTM.add(Dense(meta["summary_dim"], activation="sigmoid"))
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        """Performs the forward pass of the model
+
+        Args:
+            x (tf.Tensor): input data of shape (batch_size, max_time_iter, nr, num_features)
+
+        Returns:
+            out (tf.Tensor): output of shape (batch_size, summary_dim)
+        """
+        if self.num_convlstm_blocks is not None:
+            if x.shape[1] < self.min_input_time_dim:
+                raise ValueError(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on time dimension {} leads to output shape {}".format(
+                        self.__class__.__name__,
+                        x.shape,
+                        self.num_convlstm_blocks,
+                        x.shape[1],
+                        (
+                            x.shape[0],
+                            x.shape[1] // self.min_input_time_dim,
+                            x.shape[2] // self.min_input_space_dim,
+                            x.shape[3],
+                        ),
+                    )
+                )
+            if x.shape[2] < self.min_input_space_dim:
+                raise ValueError(
+                    "{} - call: input x has shape {}, but applying max_pool {} times on space dimension {} leads to output shape {}".format(
+                        self.__class__.__name__,
+                        x.shape,
+                        self.num_convlstm_blocks,
+                        x.shape[2],
+                        (
+                            x.shape[0],
+                            x.shape[1] // self.min_input_time_dim,
+                            x.shape[2] // self.min_input_space_dim,
+                            x.shape[3],
+                        ),
+                    )
+                )
+
+        out = self.ConvLSTM(x)
         return out

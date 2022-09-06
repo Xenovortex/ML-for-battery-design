@@ -192,41 +192,43 @@ class LinearODEsystem(SimulationModel):
         n_row = int(np.ceil(len(params) / 6))
         n_col = int(np.ceil(len(params) / n_row))
 
-        fig, ax = plt.subplots(n_row, n_col, figsize=self.plot_settings["figsize"])
-        if n_row > 1:
-            ax = ax.flat
+        fig = plt.figure(figsize=self.plot_settings["figsize"])
 
-        if self.plot_settings["num_plots"] == 1:
-            ax.plot(self.t, sim_data[0, :, 0], label="u(t) real part", c="orange")
-            ax.plot(self.t, sim_data[0, :, 1], label="v(t) real part", c="blue")
+        for i in range(self.plot_settings["num_plots"]):
+            ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
+            ax.plot(self.t, sim_data[i, :, 0], label="u(t) real part", c="orange")
+            ax.plot(self.t, sim_data[i, :, 1], label="v(t) real part", c="blue")
+
             if self.use_complex:
                 ax.plot(
                     self.t,
-                    sim_data[0, :, 2],
+                    sim_data[i, :, 2],
                     label="u(t) complex part",
                     c="orange",
                     linestyle="--",
                 )
                 ax.plot(
                     self.t,
-                    sim_data[0, :, 3],
+                    sim_data[i, :, 3],
                     label="v(t) complex part",
                     c="blue",
                     linestyle="--",
                 )
+
             if self.plot_settings["show_params"]:
                 for j, param_name in enumerate(self.hidden_param_names):
                     ax.text(
                         0.1,
-                        0.7 - 0.025 * j,
-                        "{}={:.3f}".format(param_name, params[0, j]),
+                        0.7 - 0.05 * j,
+                        "{}={:.3f}".format(param_name, params[i, j]),
                         horizontalalignment="left",
                         verticalalignment="center",
                         transform=ax.transAxes,
-                        size=10,
+                        size=8,
                     )
+
             if self.plot_settings["show_eigen"]:
-                param_kwargs = self.sample_to_kwargs(params[0])
+                param_kwargs = self.sample_to_kwargs(params[i])
                 A = np.array(
                     [
                         [param_kwargs["a"], param_kwargs["b"]],
@@ -236,134 +238,51 @@ class LinearODEsystem(SimulationModel):
                 eigenvalues, eigenvectors = np.linalg.eig(A)
                 ax.text(
                     0.1,
+                    0.7 + 0.2,
+                    "Eigenvalue 1 = {:.2f}".format(eigenvalues[0]),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=8,
+                )
+                ax.text(
+                    0.1,
+                    0.7 + 0.15,
+                    "Eigenvalue 2 = {:.2f}".format(eigenvalues[1]),
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                    transform=ax.transAxes,
+                    size=8,
+                )
+                ax.text(
+                    0.1,
                     0.7 + 0.1,
-                    "Eigenvalue 1={:.3f}".format(eigenvalues[0]),
-                    horizontalalignment="left",
-                    verticalalignment="center",
-                    transform=ax.transAxes,
-                    size=10,
-                )
-                ax.text(
-                    0.1,
-                    0.7 + 0.075,
-                    "Eigenvalue 2={:.3f}".format(eigenvalues[1]),
-                    horizontalalignment="left",
-                    verticalalignment="center",
-                    transform=ax.transAxes,
-                    size=10,
-                )
-                ax.text(
-                    0.1,
-                    0.7 + 0.05,
-                    "Eigenvector 1=({:.3f}, {:.3f})".format(
+                    "Eigenvector 1 = ({:.2f}, {:.2f})".format(
                         eigenvectors[0, 0], eigenvectors[1, 0]
                     ),
                     horizontalalignment="left",
                     verticalalignment="center",
                     transform=ax.transAxes,
-                    size=10,
+                    size=8,
                 )
                 ax.text(
                     0.1,
-                    0.7 + 0.025,
-                    "Eigenvector 2=({:.3f}, {:.3f})".format(
+                    0.7 + 0.05,
+                    "Eigenvector 2 = ({:.2f}, {:.2f})".format(
                         eigenvectors[0, 1], eigenvectors[1, 1]
                     ),
                     horizontalalignment="left",
                     verticalalignment="center",
                     transform=ax.transAxes,
-                    size=10,
+                    size=8,
                 )
-            ax.set_xlabel("Time t[s]")
+
+            ax.set_xlabel("Time t [s]")
             ax.set_ylabel("Function u(t)/v(t)")
             ax.grid(True)
-            ax.legend()
-        elif self.plot_settings["num_plots"] > 1:
-            for i, param in enumerate(params):
-                ax[i].plot(
-                    self.t, sim_data[i, :, 0], label="u(t) real part", c="orange"
-                )
-                ax[i].plot(self.t, sim_data[i, :, 1], label="v(t) real part", c="blue")
-                if self.use_complex:
-                    ax[i].plot(
-                        self.t,
-                        sim_data[i, :, 2],
-                        label="u(t) complex part",
-                        c="orange",
-                        linestyle="--",
-                    )
-                    ax[i].plot(
-                        self.t,
-                        sim_data[i, :, 3],
-                        label="v(t) complex part",
-                        c="blue",
-                        linestyle="--",
-                    )
-                if self.plot_settings["show_params"]:
-                    for j, param_name in enumerate(self.hidden_param_names):
-                        ax[i].text(
-                            0.1,
-                            0.7 - 0.05 * j,
-                            "{}={:.3f}".format(param_name, param[j]),
-                            horizontalalignment="left",
-                            verticalalignment="center",
-                            transform=ax[i].transAxes,
-                            size=8,
-                        )
-                if self.plot_settings["show_eigen"]:
-                    param_kwargs = self.sample_to_kwargs(param)
-                    A = np.array(
-                        [
-                            [param_kwargs["a"], param_kwargs["b"]],
-                            [param_kwargs["c"], param_kwargs["d"]],
-                        ]
-                    )
-                    eigenvalues, eigenvectors = np.linalg.eig(A)
-                    ax[i].text(
-                        0.1,
-                        0.7 + 0.2,
-                        "Eigenvalue 1={:.2f}".format(eigenvalues[0]),
-                        horizontalalignment="left",
-                        verticalalignment="center",
-                        transform=ax[i].transAxes,
-                        size=8,
-                    )
-                    ax[i].text(
-                        0.1,
-                        0.7 + 0.15,
-                        "Eigenvalue 2={:.2f}".format(eigenvalues[1]),
-                        horizontalalignment="left",
-                        verticalalignment="center",
-                        transform=ax[i].transAxes,
-                        size=8,
-                    )
-                    ax[i].text(
-                        0.1,
-                        0.7 + 0.1,
-                        "Eigenvector 1=({:.2f}, {:.2f})".format(
-                            eigenvectors[0, 0], eigenvectors[1, 0]
-                        ),
-                        horizontalalignment="left",
-                        verticalalignment="center",
-                        transform=ax[i].transAxes,
-                        size=8,
-                    )
-                    ax[i].text(
-                        0.1,
-                        0.7 + 0.05,
-                        "Eigenvector 2=({:.2f}, {:.2f})".format(
-                            eigenvectors[0, 1], eigenvectors[1, 1]
-                        ),
-                        horizontalalignment="left",
-                        verticalalignment="center",
-                        transform=ax[i].transAxes,
-                        size=8,
-                    )
-                ax[i].set_xlabel("Time t[s]")
-                ax[i].set_ylabel("Function u(t)/v(t)")
-                ax[i].grid(True)
-                handles, labels = ax[i].get_legend_handles_labels()
-            fig.legend(handles, labels)
+            handles, labels = ax.get_legend_handles_labels()
+
+        fig.legend(handles, labels)
 
         if self.plot_settings["show_title"]:
             fig.suptitle("Linear ODE system simulation data examples")
@@ -384,7 +303,7 @@ class LinearODEsystem(SimulationModel):
             plt.show(block=True if self.plot_settings["show_time"] is None else False)
             if self.plot_settings["show_time"] is not None:
                 time.sleep(self.plot_settings["show_time"])
-            plt.close()
+        plt.close()
 
         return fig, ax, params, sim_data
 
@@ -428,29 +347,30 @@ class LinearODEsystem(SimulationModel):
         n_row = int(np.ceil(self.plot_settings["num_plots"] / 6))
         n_col = int(np.ceil(self.plot_settings["num_plots"] / n_row))
 
-        fig, ax = plt.subplots(n_row, n_col, figsize=self.plot_settings["figsize"])
-        if n_row > 1:
-            ax = ax.flat
+        fig = plt.figure(figsize=self.plot_settings["figsize"])
 
-        if self.plot_settings["num_plots"] == 1:
+        for i in range(self.plot_settings["num_plots"]):
+            ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
             ax.plot(
                 self.t,
-                np.median(resim[0, :, :, 0], axis=0),
+                np.median(resim[i, :, :, 0], axis=0),
                 label="Median u(t) real",
                 color="orange",
             )
             ax.plot(
                 self.t,
-                ground_truths[0, :, 0],
+                ground_truths[i, :, 0],
                 marker="o",
                 label="Ground truth u(t) real",
                 color="k",
                 linestyle="--",
                 alpha=0.8,
             )
-            u_qt_50 = np.quantile(resim[0, :, :, 0], q=[0.25, 0.75], axis=0)
-            u_qt_90 = np.quantile(resim[0, :, :, 0], q=[0.05, 0.95], axis=0)
-            u_qt_95 = np.quantile(resim[0, :, :, 0], q=[0.025, 0.975], axis=0)
+
+            u_qt_50 = np.quantile(resim[i, :, :, 0], q=[0.25, 0.75], axis=0)
+            u_qt_90 = np.quantile(resim[i, :, :, 0], q=[0.05, 0.95], axis=0)
+            u_qt_95 = np.quantile(resim[i, :, :, 0], q=[0.025, 0.975], axis=0)
+
             ax.fill_between(
                 self.t,
                 u_qt_50[0],
@@ -475,24 +395,27 @@ class LinearODEsystem(SimulationModel):
                 alpha=0.1,
                 label="u: 95% CI",
             )
+
             ax.plot(
                 self.t,
-                np.median(resim[0, :, :, 1], axis=0),
+                np.median(resim[i, :, :, 1], axis=0),
                 label="Median v(t) real",
                 color="blue",
             )
             ax.plot(
                 self.t,
-                ground_truths[0, :, 1],
+                ground_truths[i, :, 1],
                 marker="o",
                 label="Ground truth v(t) real",
                 color="k",
                 linestyle="--",
                 alpha=0.8,
             )
-            v_qt_50 = np.quantile(resim[0, :, :, 1], q=[0.25, 0.75], axis=0)
-            v_qt_90 = np.quantile(resim[0, :, :, 1], q=[0.05, 0.95], axis=0)
-            v_qt_95 = np.quantile(resim[0, :, :, 1], q=[0.025, 0.975], axis=0)
+
+            v_qt_50 = np.quantile(resim[i, :, :, 1], q=[0.25, 0.75], axis=0)
+            v_qt_90 = np.quantile(resim[i, :, :, 1], q=[0.05, 0.95], axis=0)
+            v_qt_95 = np.quantile(resim[i, :, :, 1], q=[0.025, 0.975], axis=0)
+
             ax.fill_between(
                 self.t,
                 v_qt_50[0],
@@ -517,27 +440,31 @@ class LinearODEsystem(SimulationModel):
                 alpha=0.1,
                 label="v: 95% CI",
             )
+
             if self.use_complex:
                 ax.plot(
                     self.t,
-                    np.median(resim[0, :, :, 2], axis=0),
+                    np.median(resim[i, :, :, 2], axis=0),
                     label="Median u(t) complex",
                     color="orange",
                     linestyle="--",
                 )
                 ax.plot(
                     self.t,
-                    ground_truths[0, :, 2],
+                    ground_truths[i, :, 2],
+                    marker="o",
                     label="Ground truth u(t) complex",
                     color="k",
                     linestyle="--",
                     alpha=0.8,
                 )
-                u_complex_qt_50 = np.quantile(resim[0, :, :, 2], q=[0.25, 0.75], axis=0)
-                u_complex_qt_90 = np.quantile(resim[0, :, :, 2], q=[0.05, 0.95], axis=0)
+
+                u_complex_qt_50 = np.quantile(resim[i, :, :, 2], q=[0.25, 0.75], axis=0)
+                u_complex_qt_90 = np.quantile(resim[i, :, :, 2], q=[0.05, 0.95], axis=0)
                 u_complex_qt_95 = np.quantile(
-                    resim[0, :, :, 2], q=[0.025, 0.975], axis=0
+                    resim[i, :, :, 2], q=[0.025, 0.975], axis=0
                 )
+
                 ax.fill_between(
                     self.t,
                     u_complex_qt_50[0],
@@ -562,9 +489,10 @@ class LinearODEsystem(SimulationModel):
                     alpha=0.1,
                     label="u complex: 95% CI",
                 )
+
                 ax.plot(
                     self.t,
-                    np.median(resim[0, :, :, 3], axis=0),
+                    np.median(resim[i, :, :, 3], axis=0),
                     label="Median v(t) complex",
                     color="blue",
                     linestyle="--",
@@ -572,16 +500,19 @@ class LinearODEsystem(SimulationModel):
                 ax.plot(
                     self.t,
                     ground_truths[0, :, 3],
+                    marker="o",
                     label="Ground truth v(t) complex",
                     color="k",
                     linestyle="--",
                     alpha=0.8,
                 )
-                v_complex_qt_50 = np.quantile(resim[0, :, :, 3], q=[0.25, 0.75], axis=0)
-                v_complex_qt_90 = np.quantile(resim[0, :, :, 3], q=[0.05, 0.95], axis=0)
+
+                v_complex_qt_50 = np.quantile(resim[i, :, :, 3], q=[0.25, 0.75], axis=0)
+                v_complex_qt_90 = np.quantile(resim[i, :, :, 3], q=[0.05, 0.95], axis=0)
                 v_complex_qt_95 = np.quantile(
-                    resim[0, :, :, 3], q=[0.025, 0.975], axis=0
+                    resim[i, :, :, 3], q=[0.025, 0.975], axis=0
                 )
+
                 ax.fill_between(
                     self.t,
                     v_complex_qt_50[0],
@@ -607,201 +538,12 @@ class LinearODEsystem(SimulationModel):
                     label="v complex: 95% CI",
                 )
 
-            ax.set_xlabel("Time t [s]")
+            ax.set_xlabel("Time [s]")
             ax.set_ylabel("Function u(t)/v(t)")
             ax.grid(True)
-            ax.legend()
+            handles, labels = ax.get_legend_handles_labels()
 
-        elif self.plot_settings["num_plots"] > 1:
-            for i in range(self.plot_settings["num_plots"]):
-                ax[i].plot(
-                    self.t,
-                    np.median(resim[i, :, :, 0], axis=0),
-                    label="Median u(t) real",
-                    color="orange",
-                )
-                ax[i].plot(
-                    self.t,
-                    ground_truths[i, :, 0],
-                    marker="o",
-                    label="Ground truth u(t) real",
-                    color="k",
-                    linestyle="--",
-                    alpha=0.8,
-                )
-                u_qt_50 = np.quantile(resim[i, :, :, 0], q=[0.25, 0.75], axis=0)
-                u_qt_90 = np.quantile(resim[i, :, :, 0], q=[0.05, 0.95], axis=0)
-                u_qt_95 = np.quantile(resim[i, :, :, 0], q=[0.025, 0.975], axis=0)
-                ax[i].fill_between(
-                    self.t,
-                    u_qt_50[0],
-                    u_qt_50[1],
-                    color="orange",
-                    alpha=0.3,
-                    label="u: 50% CI",
-                )
-                ax[i].fill_between(
-                    self.t,
-                    u_qt_90[0],
-                    u_qt_90[1],
-                    color="orange",
-                    alpha=0.2,
-                    label="u: 90% CI",
-                )
-                ax[i].fill_between(
-                    self.t,
-                    u_qt_95[0],
-                    u_qt_95[1],
-                    color="orange",
-                    alpha=0.1,
-                    label="u: 95% CI",
-                )
-                ax[i].plot(
-                    self.t,
-                    np.median(resim[i, :, :, 1], axis=0),
-                    label="Median v(t) real",
-                    color="blue",
-                )
-                ax[i].plot(
-                    self.t,
-                    ground_truths[i, :, 1],
-                    marker="o",
-                    label="Ground truth v(t) real",
-                    color="k",
-                    linestyle="--",
-                    alpha=0.8,
-                )
-                v_qt_50 = np.quantile(resim[i, :, :, 1], q=[0.25, 0.75], axis=0)
-                v_qt_90 = np.quantile(resim[i, :, :, 1], q=[0.05, 0.95], axis=0)
-                v_qt_95 = np.quantile(resim[i, :, :, 1], q=[0.025, 0.975], axis=0)
-                ax[i].fill_between(
-                    self.t,
-                    v_qt_50[0],
-                    v_qt_50[1],
-                    color="blue",
-                    alpha=0.3,
-                    label="v: 50% CI",
-                )
-                ax[i].fill_between(
-                    self.t,
-                    v_qt_90[0],
-                    v_qt_90[1],
-                    color="blue",
-                    alpha=0.2,
-                    label="v: 90% CI",
-                )
-                ax[i].fill_between(
-                    self.t,
-                    v_qt_95[0],
-                    v_qt_95[1],
-                    color="blue",
-                    alpha=0.1,
-                    label="v: 95% CI",
-                )
-                if self.use_complex:
-                    ax[i].plot(
-                        self.t,
-                        np.median(resim[i, :, :, 2], axis=0),
-                        label="Median u(t) complex",
-                        color="orange",
-                        linestyle="--",
-                    )
-                    ax[i].plot(
-                        self.t,
-                        ground_truths[i, :, 2],
-                        marker="o",
-                        label="Ground truth u(t) complex",
-                        color="k",
-                        linestyle="--",
-                        alpha=0.8,
-                    )
-                    u_complex_qt_50 = np.quantile(
-                        resim[i, :, :, 2], q=[0.25, 0.75], axis=0
-                    )
-                    u_complex_qt_90 = np.quantile(
-                        resim[i, :, :, 2], q=[0.05, 0.95], axis=0
-                    )
-                    u_complex_qt_95 = np.quantile(
-                        resim[i, :, :, 2], q=[0.025, 0.975], axis=0
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        u_complex_qt_50[0],
-                        u_complex_qt_50[1],
-                        color="orange",
-                        alpha=0.3,
-                        label="u complex: 50% CI",
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        u_complex_qt_90[0],
-                        u_complex_qt_90[1],
-                        color="orange",
-                        alpha=0.2,
-                        label="u complex: 90% CI",
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        u_complex_qt_95[0],
-                        u_complex_qt_95[1],
-                        color="orange",
-                        alpha=0.1,
-                        label="u complex: 95% CI",
-                    )
-                    ax[i].plot(
-                        self.t,
-                        np.median(resim[i, :, :, 3], axis=0),
-                        label="Median v(t) complex",
-                        color="blue",
-                        linestyle="--",
-                    )
-                    ax[i].plot(
-                        self.t,
-                        ground_truths[0, :, 3],
-                        marker="o",
-                        label="Ground truth v(t) complex",
-                        color="k",
-                        linestyle="--",
-                        alpha=0.8,
-                    )
-                    v_complex_qt_50 = np.quantile(
-                        resim[i, :, :, 3], q=[0.25, 0.75], axis=0
-                    )
-                    v_complex_qt_90 = np.quantile(
-                        resim[i, :, :, 3], q=[0.05, 0.95], axis=0
-                    )
-                    v_complex_qt_95 = np.quantile(
-                        resim[i, :, :, 3], q=[0.025, 0.975], axis=0
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        v_complex_qt_50[0],
-                        v_complex_qt_50[1],
-                        color="blue",
-                        alpha=0.3,
-                        label="v complex: 50% CI",
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        v_complex_qt_90[0],
-                        v_complex_qt_90[1],
-                        color="blue",
-                        alpha=0.2,
-                        label="v complex: 90% CI",
-                    )
-                    ax[i].fill_between(
-                        self.t,
-                        v_complex_qt_95[0],
-                        v_complex_qt_95[1],
-                        color="blue",
-                        alpha=0.1,
-                        label="v complex: 95% CI",
-                    )
-                ax[i].set_xlabel("Time[s]")
-                ax[i].set_ylabel("Function u(t)/v(t)")
-                ax[i].grid(True)
-                handles, labels = ax[i].get_legend_handles_labels()
-            fig.legend(handles, labels)
+        fig.legend(handles, labels)
 
         if self.plot_settings["show_title"]:
             fig.suptitle("Linear ODE system resimulation")
@@ -816,6 +558,6 @@ class LinearODEsystem(SimulationModel):
             plt.show(block=True if self.plot_settings["show_time"] is None else False)
             if self.plot_settings["show_time"] is not None:
                 time.sleep(self.plot_settings["show_time"])
-            plt.close()
+        plt.close()
 
         return fig, ax, resim

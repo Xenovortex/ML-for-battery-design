@@ -49,9 +49,7 @@ def setup_dummy_objects(model_name, remove_nan=True):
     process_settings = inference_settings[model_name]["processing"]
     process_settings["remove_nan"] = remove_nan
     configurator = Processing(
-        process_settings,
-        sim_model.prior_means,
-        sim_model.prior_stds,
+        process_settings, sim_model.prior_means, sim_model.prior_stds, 0, 1
     )
     dummy_trainer = Trainer(
         amortizer=dummy_amortizer,

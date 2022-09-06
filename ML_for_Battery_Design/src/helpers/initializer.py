@@ -315,10 +315,6 @@ class Initializer:
                 file,
                 pickle.HIGHEST_PROTOCOL,
             )
-            assert os.path.exists(
-                os.path.join(self.file_manager("model"), "setup.pickle")
-            )
-            print(os.path.join(self.file_manager("model"), "setup.pickle"))
 
     def load_setup(self) -> Tuple[str, dict, dict, dict]:
         """Load setup from pickle file and reconstruct trainer with evaluater

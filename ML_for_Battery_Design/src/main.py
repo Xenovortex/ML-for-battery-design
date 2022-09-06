@@ -25,6 +25,8 @@ from docopt import docopt
 from tabulate import tabulate
 
 from ML_for_Battery_Design.src.helpers.wrappers import (
+    analyze_sim,
+    evaluate,
     generate_data,
     train_offline,
     train_online,
@@ -52,9 +54,9 @@ def main(argv: Optional[Sequence[str]] = None) -> dict:
     elif bool(args["generate_data"]):
         generate_data(**args)
     elif bool(args["analyze_sim"]):
-        pass
+        analyze_sim(**args)
     elif bool(args["evaluate"]):
-        pass
+        evaluate(**args)
 
     return args
 

@@ -10,15 +10,19 @@ from parameterized import parameterized
 from tensorflow.keras.activations import elu, relu, sigmoid, tanh
 from tensorflow.keras.layers import (
     LSTM,
+    BatchNormalization,
     Conv2D,
     Dense,
     Flatten,
+    GlobalAveragePooling1D,
     GlobalAveragePooling2D,
     MaxPool2D,
 )
 
 from ML_for_Battery_Design.src.helpers.summary import (
     CNN_Network,
+    ConvLSTM1D,
+    ConvLSTM_Network,
     FC_Network,
     LSTM_Network,
 )
@@ -454,6 +458,240 @@ class CNNTest(tf.test.TestCase):
                         model.__class__.__name__,
                         input_data.shape,
                         cnn_num_blocks,
+                        input_data.shape[2],
+                        expected_output_shape,
+                    ),
+                )
+
+
+class ConvLSTM(tf.test.TestCase):
+    def setUp(self):
+        super(ConvLSTM, self).setUp()
+
+    @parameterized.expand(
+        [
+            [True, True, random.randint(1, 3), random.randint(1, 3)],
+            [True, False, random.randint(1, 3), random.randint(1, 3)],
+            [False, True, random.randint(1, 3), random.randint(1, 3)],
+            [False, False, random.randint(1, 3), random.randint(1, 3)],
+            [
+                random.choice([True, False]),
+                random.choice([True, False]),
+                0,
+                random.randint(1, 3),
+            ],
+            [
+                random.choice([True, False]),
+                random.choice([True, False]),
+                random.randint(1, 3),
+                0,
+            ],
+            [random.choice([True, False]), random.choice([True, False]), 0, 0],
+        ]
+    )
+    def test_pde_inference(
+        self, pool_time, pool_space, convlstm_num_blocks, fc_num_layer
+    ):
+        summary_dim = random.randint(1, 4)
+        num_filters = (
+            [random.randint(1, 16) for _ in range(convlstm_num_blocks)]
+            if convlstm_num_blocks > 0
+            else None
+        )
+        units = (
+            [random.randint(4, 16) for _ in range(fc_num_layer)]
+            if fc_num_layer > 0
+            else None
+        )
+        architecture_settings = MetaDictSetting(
+            meta_dict={
+                "num_filters": num_filters,
+                "units": units,
+                "fc_activation": "relu",
+                "summary_dim": summary_dim,
+                "pool_time": pool_time,
+                "pool_space": pool_space,
+                "batch_norm": True,
+            }
+        )
+
+        model = ConvLSTM_Network(build_meta_dict({}, architecture_settings))
+
+        batch_size = random.randint(1, 32)
+        max_time_iter = 2 ** random.randint(convlstm_num_blocks, 6)
+        nr = 2 ** random.randint(convlstm_num_blocks, 6)
+        num_features = random.randint(1, 10)
+        input_data = tf.random.uniform((batch_size, max_time_iter, nr, num_features))
+        output = model(input_data)
+        print("output shape:", output.shape)
+        expected_layer_types = []
+        expected_activation = []
+        expected_layer_output_shape = []
+        if num_filters is not None:
+            expected_layer_types += (
+                (convlstm_num_blocks - 1)
+                * [
+                    ConvLSTM1D,
+                    BatchNormalization,
+                    MaxPool2D,
+                ]
+                + [ConvLSTM1D]
+                + [GlobalAveragePooling1D]
+            )
+            expected_activation += (
+                (convlstm_num_blocks - 1) * [tanh, None, None] + [tanh] + [None]
+            )
+            temp_max_time_iter = max_time_iter
+            temp_nr = nr
+            if convlstm_num_blocks > 1:
+                for num_filter in num_filters[:-1]:
+                    new_max_time_iter = (
+                        temp_max_time_iter // 2 if pool_time else temp_max_time_iter
+                    )
+                    new_nr = temp_nr // 2 if pool_space else temp_nr
+                    expected_layer_output_shape += 2 * [
+                        (batch_size, temp_max_time_iter, temp_nr, num_filter)
+                    ] + [(batch_size, new_max_time_iter, new_nr, num_filter)]
+                    temp_max_time_iter = new_max_time_iter
+                    temp_nr = new_nr
+            expected_layer_output_shape += [(batch_size, temp_nr, num_filters[-1])]
+            expected_layer_output_shape += [(batch_size, num_filters[-1])]
+        else:
+            expected_layer_types += [Flatten]
+            expected_activation += [None]
+            expected_layer_output_shape += [
+                (batch_size, max_time_iter * nr * num_features)
+            ]
+        if units is not None:
+            expected_layer_types += fc_num_layer * [Dense]
+            expected_activation += fc_num_layer * [relu]
+            expected_layer_output_shape += [(batch_size, unit) for unit in units]
+        expected_layer_types += [Dense]
+        expected_activation += [sigmoid]
+        expected_layer_output_shape += [(batch_size, summary_dim)]
+
+        assert isinstance(input_data, tf.Tensor)
+        self.assertEqual(input_data.dtype, tf.dtypes.float32)
+        self.assertEqual(input_data.ndim, 4)
+        self.assertEqual(input_data.shape[0], batch_size)
+        self.assertEqual(input_data.shape[1], max_time_iter)
+        self.assertEqual(input_data.shape[2], nr)
+        self.assertEqual(input_data.shape[3], num_features)
+        if num_filters is not None:
+            self.assertEqual(convlstm_num_blocks, len(num_filters))
+        else:
+            self.assertEqual(convlstm_num_blocks, 0)
+        if units is not None:
+            self.assertEqual(fc_num_layer, len(units))
+        else:
+            self.assertEqual(fc_num_layer, 0)
+        assert isinstance(pool_time, bool)
+        assert isinstance(pool_space, bool)
+        self.assertEqual(model.num_convlstm_blocks, convlstm_num_blocks)
+        if pool_time:
+            self.assertEqual(model.min_input_time_dim, 2**convlstm_num_blocks)
+        else:
+            self.assertEqual(model.min_input_time_dim, 1)
+        if pool_space:
+            self.assertEqual(model.min_input_space_dim, 2**convlstm_num_blocks)
+        else:
+            self.assertEqual(model.min_input_space_dim, 1)
+        assert isinstance(output, tf.Tensor)
+        self.assertEqual(output.dtype, tf.dtypes.float32)
+        self.assertEqual(output.ndim, 2)
+        self.assertEqual(output.shape[0], batch_size)
+        self.assertEqual(output.shape[1], summary_dim)
+        if num_filters is not None:
+            self.assertEqual(
+                len(model.ConvLSTM.layers),
+                (convlstm_num_blocks - 1) * 3 + 2 + fc_num_layer + 1,
+            )
+        else:
+            self.assertEqual(
+                len(model.ConvLSTM.layers),
+                1 + fc_num_layer + 1,
+            )
+        for layer, layer_type, layer_act, layer_out_shape in zip(
+            model.ConvLSTM.layers,
+            expected_layer_types,
+            expected_activation,
+            expected_layer_output_shape,
+        ):
+            assert isinstance(layer, layer_type)
+            if isinstance(layer, (Dense, ConvLSTM1D)):
+                self.assertEqual(layer.activation, layer_act)
+            self.assertEqual(layer.output_shape, layer_out_shape)
+
+    @parameterized.expand(
+        [
+            [random.randint(1, 7), random.randint(32, 100), "time_error"],
+            [random.randint(32, 100), random.randint(1, 7), "space_error"],
+            [random.randint(1, 7), random.randint(1, 7), "time_error"],
+        ]
+    )
+    def test_max_pool_leads_to_zero_dim(self, max_time_iter, nr, expected_error):
+        summary_dim = random.randint(1, 4)
+        convlstm_num_block = random.randint(3, 5)
+        fc_num_layer = random.randint(1, 3)
+        num_filters = (
+            [random.randint(1, 16) for _ in range(convlstm_num_block)]
+            if convlstm_num_block > 0
+            else None
+        )
+        units = (
+            [random.randint(4, 16) for _ in range(fc_num_layer)]
+            if (fc_num_layer > 0)
+            else None
+        )
+
+        architecture_settings = MetaDictSetting(
+            meta_dict={
+                "num_filters": num_filters,
+                "units": units,
+                "fc_activation": "relu",
+                "summary_dim": summary_dim,
+                "pool_time": True,
+                "pool_space": True,
+                "batch_norm": True,
+            }
+        )
+
+        model = ConvLSTM_Network(build_meta_dict({}, architecture_settings))
+
+        batch_size = random.randint(1, 10)
+        num_features = random.randint(1, 10)
+        input_data = tf.random.uniform([batch_size, max_time_iter, nr, num_features])
+        expected_output_shape = (
+            input_data.shape[0],
+            input_data.shape[1] // (2**convlstm_num_block),
+            input_data.shape[2] // (2**convlstm_num_block),
+            input_data.shape[3],
+        )
+        out = io.StringIO()
+        err = io.StringIO()
+        sys.stdout = out
+        sys.stderr = err
+        with pytest.raises(ValueError):
+            model(input_data)
+            self.assertEqual(out.getvalue(), "")
+            if expected_error == "time_error":
+                self.assertEqual(
+                    err.getvalue(),
+                    "{} - call: input x has shape {}, but applying max_pool {} times on time dimesion {} leads to output shape {}".format(
+                        model.__class__.__name__,
+                        input_data.shape,
+                        convlstm_num_block,
+                        input_data.shape[1],
+                        expected_output_shape,
+                    ),
+                )
+            elif expected_error == "space_error":
+                self.assertEqual(
+                    err.getvalue(),
+                    "{} - call: input x has shape {}, but applying max_pool {} times on space dimesion {} leads to output shape {}".format(
+                        model.__class__.__name__,
+                        input_data.shape,
+                        convlstm_num_block,
                         input_data.shape[2],
                         expected_output_shape,
                     ),

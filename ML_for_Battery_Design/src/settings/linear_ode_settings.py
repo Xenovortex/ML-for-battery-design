@@ -1,5 +1,7 @@
 from bayesflow.default_settings import MetaDictSetting
 
+# from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
+
 # ---------------------------------------------------------------------------- #
 #                              Simulation Settings                             #
 # ---------------------------------------------------------------------------- #
@@ -15,8 +17,8 @@ HIDDEN_PARAMS = {
 }
 
 SIMULATION_SETTINGS = {
-    "dt0": 0.1,
-    "max_time_iter": 30,
+    "dt0": 0.03,
+    "max_time_iter": 32,
     "use_reject_sampling": True,
     "reject_bound_real": [(0, float("inf"))],
     "reject_bound_complex": None,
@@ -65,10 +67,10 @@ LINEAR_ODE_SYSTEM_FC_ARCHITECTURE = MetaDictSetting(
 
 LINEAR_ODE_SYSTEM_LSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
-        "lstm_units": [64, 64, 64],
-        "fc_units": [64],
+        "lstm_units": [32, 32, 32],
+        "fc_units": [32, 32],
         "fc_activation": "relu",
-        "summary_dim": 64,
+        "summary_dim": 32,
     }
 )
 
@@ -89,9 +91,12 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 
 
 LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
-    "lr": 0.001,
-    "num_epochs": 2,
-    "it_per_epoch": 10,
+    "lr": 0.001,  # PiecewiseConstantDecay(
+    # [10000, 15000],
+    # [0.001, 0.0001, 0.00001],
+    # ),
+    "num_epochs": 20,
+    "it_per_epoch": 1000,
     "batch_size": 32,
 }
 

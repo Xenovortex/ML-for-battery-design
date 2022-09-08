@@ -42,6 +42,7 @@ class SPMBatteryModel(SimulationModel):
 
     def get_sim_data_shape(self) -> tuple:
         sim_data_dim = (self.max_time_iter, self.nr, self.num_features)
+        # sim_data_dim = (self.max_time_iter, self.num_features)
         return sim_data_dim
 
     def solver(self, params: npt.NDArray[Any]) -> npt.NDArray[Any]:
@@ -236,8 +237,7 @@ class SPMBatteryModel(SimulationModel):
             ax = fig.add_subplot(
                 int("{}{}{}".format(n_row, n_col, i + 1)), projection="3d"
             )
-            nr = np.linspace(1, self.nr, self.nr)
-            X, Y = np.meshgrid(nr, self.t)
+            X, Y = np.meshgrid(self.x, self.t)
             mappable = plt.cm.ScalarMappable()
             mappable.set_array(sim_data[i, :, :, 0])
             ax.plot_surface(

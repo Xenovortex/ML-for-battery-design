@@ -89,6 +89,7 @@ class SimulationModel(ABC):
         self.reject_sampling = self.simulation_settings["use_reject_sampling"]
         if "nr" in simulation_settings:
             self.nr = self.simulation_settings["nr"]
+            self.x = np.linspace(1, self.nr, self.nr)
             self.is_pde = True
         else:
             self.is_pde = False

@@ -195,13 +195,13 @@ class Evaluater:
 
         if self.eval_settings["plot_sbc_histogram"]:
             print("Plotting simulation-based calibration histogram...")
-            kwargs = {"inputs": self.test_dict["test_data_raw"]}
+            # kwargs = {"inputs": self.test_dict["test_data_raw"]}
             self.plot_wrapper(
                 self.trainer.diagnose_sbc_histograms,
                 parent_folder,
                 "simulation-based calibration",
                 "sbc_hist.png",
-                **kwargs,
+                # **kwargs,
             )
 
         if self.eval_settings["plot_sbc_ecdf"]:

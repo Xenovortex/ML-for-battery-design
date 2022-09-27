@@ -9,7 +9,7 @@ Usage:
     main.py train_offline <sim_model> <data_name> <summary_net> <filename> [-s | --save_model] [-t | --test_mode] [-k | --skip_wrappers]
     main.py generate_data <sim_model> <data_name> [-t | --test_mode] [-k | --skip_wrappers]
     main.py analyze_sim <sim_model> [<data_name> <filename>] [-t | --test_mode] [-k | --skip_wrappers]
-    main.py evaluate <sim_model> <data_name> <filename> [-t | --test_mode] [-k | --skip_wrappers]
+    main.py evaluate <sim_model> <data_name> <filename> [-s | --save_model] [-t | --test_mode] [-k | --skip_wrappers]
     main.py -h | --help
 
 Options:

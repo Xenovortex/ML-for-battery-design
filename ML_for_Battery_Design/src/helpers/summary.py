@@ -2,6 +2,8 @@ from typing import Type
 
 import tensorflow as tf
 from bayesflow.default_settings import MetaDictSetting
+from bayesflow.helper_functions import build_meta_dict
+from keras import backend as K
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
     LSTM,
@@ -36,7 +38,7 @@ class FC_Network(tf.keras.Model):
         if meta["units"] is not None:
             for unit in meta["units"]:
                 self.FC.add(Dense(unit, activation=meta["activation"]))
-        self.FC.add(Dense(meta["summary_dim"], activation="sigmoid"))
+        self.FC.add(Dense(meta["summary_dim"]))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -77,7 +79,7 @@ class LSTM_Network(tf.keras.Model):
         if meta["fc_units"] is not None:
             for unit in meta["fc_units"]:
                 self.LSTM.add(Dense(unit, activation=meta["fc_activation"]))
-        self.LSTM.add(Dense(meta["summary_dim"], activation="sigmoid"))
+        self.LSTM.add(Dense(meta["summary_dim"]))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -144,7 +146,7 @@ class CNN_Network(tf.keras.Model):
         if meta["units"] is not None:
             for unit in meta["units"]:
                 self.CNN.add(Dense(unit, activation=meta["fc_activation"]))
-        self.CNN.add(Dense(meta["summary_dim"], activation="sigmoid"))
+        self.CNN.add(Dense(meta["summary_dim"]))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -260,7 +262,7 @@ class ConvLSTM_Network(tf.keras.Model):
         if meta["units"] is not None:
             for unit in meta["units"]:
                 self.ConvLSTM.add(Dense(unit, activation=meta["fc_activation"]))
-        self.ConvLSTM.add(Dense(meta["summary_dim"], activation="sigmoid"))
+        self.ConvLSTM.add(Dense(meta["summary_dim"]))
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """Performs the forward pass of the model
@@ -304,4 +306,39 @@ class ConvLSTM_Network(tf.keras.Model):
                 )
 
         out = self.ConvLSTM(x)
+        return out
+
+
+class SPM_Network(tf.keras.Model):
+    def __init__(self, meta: Type[MetaDictSetting]) -> None:
+        super(SPM_Network, self).__init__()
+
+        self.ConvLSTM = ConvLSTM_Network(build_meta_dict({}, meta["ConvLSTM"]))
+        self.LSTM = LSTM_Network(build_meta_dict({}, meta["LSTM"]))
+        self.FC = FC_Network(build_meta_dict({}, meta["FC"]))
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        cs_out = self.ConvLSTM(x[:, :, :-1, :])
+        v_out = self.LSTM(x[:, :, -1, :])
+        feat = tf.concat([cs_out, v_out], axis=1)
+        out = self.FC(feat)
+        return out
+
+
+class DoubleLSTM_Network(tf.keras.Model):
+    def __init__(self, meta: Type[MetaDictSetting]) -> None:
+        super(DoubleLSTM_Network, self).__init__()
+
+        self.LSTM_time = LSTM_Network(build_meta_dict({}, meta["LSTM"]))
+        self.LSTM_space = LSTM_Network(build_meta_dict({}, meta["LSTM"]))
+        self.FC = FC_Network(build_meta_dict({}, meta["FC"]))
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        time_feat = self.LSTM_time(x)
+        space_dim = x.shape[2] // 2
+        u_trans = K.permute_dimensions(x[:, :, :space_dim], (0, 2, 1))
+        v_trans = K.permute_dimensions(x[:, :, space_dim:], (0, 2, 1))
+        x_trans = tf.concat([u_trans, v_trans], axis=1)
+        space_feat = self.LSTM_space(x_trans)
+        out = self.FC(tf.concat([time_feat, space_feat], axis=1))
         return out

@@ -1,6 +1,5 @@
 from bayesflow.default_settings import MetaDictSetting
-
-# from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
+from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 
 # ---------------------------------------------------------------------------- #
 #                              Simulation Settings                             #
@@ -17,7 +16,7 @@ HIDDEN_PARAMS = {
 }
 
 SIMULATION_SETTINGS = {
-    "dt0": 0.03,
+    "dt0": 0.1,
     "max_time_iter": 32,
     "use_reject_sampling": True,
     "reject_bound_real": [(0, float("inf"))],
@@ -30,8 +29,8 @@ SAMPLE_BOUNDARIES = {
     "b": (-10, 10),
     "c": (-10, 10),
     "d": (-10, 10),
-    "u0": (1, 10),
-    "v0": (1, 10),
+    "u0": (-10, 10),
+    "v0": (-10, 10),
 }
 
 DEFAULT_VALUES = {"a": 1, "b": 0, "c": 0, "d": 1, "u0": 1, "v0": 1}
@@ -44,7 +43,7 @@ PLOT_SETTINGS = {
     "show_plot": False,
     "show_time": None,
     "show_params": True,
-    "show_eigen": True,
+    "show_eigen": False,
 }
 
 
@@ -91,13 +90,14 @@ LINEAR_ODE_SYSTEM_ARCHITECTURES = {
 
 
 LINEAR_ODE_SYSTEM_TRAINING_SETTINGS = {
-    "lr": 0.001,  # PiecewiseConstantDecay(
-    # [10000, 15000],
-    # [0.001, 0.0001, 0.00001],
-    # ),
-    "num_epochs": 20,
+    "lr": PiecewiseConstantDecay(
+        [50000, 100000, 150000],
+        [0.001, 0.0001, 0.00001, 0.000001],
+    ),
+    "num_epochs": 200,
     "it_per_epoch": 1000,
     "batch_size": 32,
+    "no_bayesflow": False,
 }
 
 LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
@@ -108,16 +108,16 @@ LINEAR_ODE_SYSTEM_PROCESSING_SETTINGS = {
 }
 
 
-LINEAR_ODE_SYSTEM_HDF5_SETTINGS = {"total_n_sim": 1024000, "chunk_size": 10240}
+LINEAR_ODE_SYSTEM_HDF5_SETTINGS = {"total_n_sim": 320000, "chunk_size": 1000}
 
 LINEAR_ODE_SYSTEM_EVALUATION_SETTINGS = {
     "batch_size": 300,
-    "n_samples": 100,
+    "n_samples": 1000,
     "plot_prior": True,
     "plot_sim_data": True,
     "plot_loss": True,
     "plot_latent": True,
-    "plot_sbc_histogram": False,  # wait for bayesflow bug resolve
+    "plot_sbc_histogram": True,  # wait for bayesflow bug resolve
     "plot_sbc_ecdf": True,
     "plot_true_vs_estimated": True,
     "plot_posterior": True,

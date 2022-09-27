@@ -1,5 +1,7 @@
 import os
 
+import tensorflow as tf
+
 from ML_for_Battery_Design.src.helpers.constants import (
     architecture_settings,
     inference_settings,
@@ -26,16 +28,17 @@ def train_online(**kwargs: str) -> None:
         )
         initializer.save_setup()
         initializer.save_losses(losses)
-        initializer.evaluater.load_losses(losses)
-        initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
-        initializer.evaluater.evaluate_bayesflow_model(
-            initializer.file_manager("result")
-        )
+        evaluater = initializer.get_evaluater(initializer.trainer)
+        evaluater.load_losses(losses)
+        evaluater.evaluate_sim_model(initializer.file_manager("result"))
+        evaluater.evaluate_bayesflow_model(initializer.file_manager("result"))
 
 
 def train_offline(**kwargs: str) -> None:
     """Wrapper for executing offline training based on user input"""
     if not bool(kwargs["--skip_wrappers"]):
+        physical_devices = tf.config.experimental.list_physical_devices("GPU")
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
         initializer = Initializer(
             architecture_settings, inference_settings, simulation_settings, **kwargs
         )
@@ -54,11 +57,10 @@ def train_offline(**kwargs: str) -> None:
         )
         initializer.save_setup()
         initializer.save_losses(losses)
-        initializer.evaluater.load_losses(losses)
-        initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
-        initializer.evaluater.evaluate_bayesflow_model(
-            initializer.file_manager("result")
-        )
+        evaluater = initializer.get_evaluater(initializer.trainer)
+        evaluater.load_losses(losses)
+        evaluater.evaluate_sim_model(initializer.file_manager("result"))
+        evaluater.evaluate_bayesflow_model(initializer.file_manager("result"))
 
 
 def generate_data(**kwargs: str) -> None:
@@ -80,7 +82,8 @@ def analyze_sim(**kwargs: str) -> None:
         initializer = Initializer(
             architecture_settings, inference_settings, simulation_settings, **kwargs
         )
-        initializer.evaluater.evaluate_sim_model(initializer.file_manager("result"))
+        evaluater = initializer.get_evaluater()
+        evaluater.evaluate_sim_model(initializer.file_manager("result"))
 
 
 def evaluate(**kwargs: str) -> None:
@@ -88,9 +91,8 @@ def evaluate(**kwargs: str) -> None:
     if not bool(kwargs["--skip_wrappers"]):
         initializer = Initializer(None, None, None, **kwargs)
         initializer.trainer.load_pretrained_network()
-        initializer.evaluater.load_losses(
+        evaluater = initializer.get_evaluater(initializer.trainer)
+        evaluater.load_losses(
             os.path.join(initializer.file_manager("result"), "losses.pickle")
         )
-        initializer.evaluater.evaluate_bayesflow_model(
-            initializer.file_manager("result")
-        )
+        evaluater.evaluate_bayesflow_model(initializer.file_manager("result"))

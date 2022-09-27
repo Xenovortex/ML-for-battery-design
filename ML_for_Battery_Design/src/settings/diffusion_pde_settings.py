@@ -7,12 +7,12 @@ from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 
 
 HIDDEN_PARAMS = {
-    "sample_a": True,
-    "sample_b": True,
-    "sample_c": True,
-    "sample_d": True,
-    "sample_Du": True,
-    "sample_Dv": True,
+    "sample_a": False,
+    "sample_b": False,
+    "sample_c": False,
+    "sample_d": False,
+    "sample_Du": False,
+    "sample_Dv": False,
     "sample_alpha_u": True,
     "sample_beta_u": True,
     "sample_gamma_u": True,
@@ -24,14 +24,16 @@ HIDDEN_PARAMS = {
 }
 
 SIMULATION_SETTINGS = {
-    "dt0": 0.02,  # 5,
-    "max_time_iter": 100,  # 100,
+    "dt0": 0.25,  # 5,
+    "max_time_iter": 20,  # 20,  # 100,
     "nr": 10,
     "use_reject_sampling": False,
-    "use_f_terms": False,
+    "use_f_terms": True,
+    "random_initial": False,
     "rtol": None,
     "atol": None,
     "hmin": 0,
+    "reduce_2D": True,
 }
 
 SAMPLE_BOUNDARIES = {
@@ -39,33 +41,33 @@ SAMPLE_BOUNDARIES = {
     "b": (-1, 1),
     "c": (-1, 1),
     "d": (-1, 1),
-    "Du": (0.01, 0.1),  # (0.005, 0.01),
-    "Dv": (0.01, 0.1),
-    "alpha_u": (-10, 10),
-    "beta_u": (-10, 0),
-    "gamma_u": (-10, 10),
-    "alpha_v": (-10, 10),
-    "beta_v": (-10, 0),
-    "gamma_v": (-10, 10),
-    "u0": (1, 10),
-    "v0": (1, 10),
+    "Du": (0, 1),  # (0.005, 0.01),
+    "Dv": (0, 1),
+    "alpha_u": (0, 1),
+    "beta_u": (-1, 0),
+    "gamma_u": (-1, 1),
+    "alpha_v": (0, 1),
+    "beta_v": (-1, 0),
+    "gamma_v": (-1, 1),
+    "u0": (-10, 10),
+    "v0": (-10, 10),
 }
 
 DEFAULT_VALUES = {
-    "a": 1,
-    "b": 1,
-    "c": 1,
-    "d": 1,
-    "Du": 0.01,
-    "Dv": 0.01,
-    "alpha_u": 1,
-    "beta_u": 1,
+    "a": 0,
+    "b": 0,
+    "c": 0,
+    "d": 0,
+    "Du": 0,
+    "Dv": 0,
+    "alpha_u": 0,
+    "beta_u": 0,
     "gamma_u": 1,
-    "alpha_v": 1,
-    "beta_v": 1,
+    "alpha_v": 0,
+    "beta_v": 0,
     "gamma_v": 1,
-    "u0": 1,
-    "v0": 1,
+    "u0": 0,
+    "v0": 0,
 }
 
 PLOT_SETTINGS = {
@@ -91,7 +93,7 @@ DIFFUSION_PDE_MODEL_SIMULATION_SETTINGS = {
 # ---------------------------------------------------------------------------- #
 
 DIFFUSION_PDE_MODEL_FC_ARCHITECTURE = MetaDictSetting(
-    meta_dict={"units": [32, 32, 32], "activation": "relu", "summary_dim": 32}
+    meta_dict={"units": [128, 128, 128], "activation": "relu", "summary_dim": 64}
 )
 
 DIFFUSION_PDE_MODEL_CNN_ARCHITECTURE = MetaDictSetting(
@@ -100,9 +102,25 @@ DIFFUSION_PDE_MODEL_CNN_ARCHITECTURE = MetaDictSetting(
         "cnn_activation": "elu",
         "units": [1024, 1024],
         "fc_activation": "relu",
-        "summary_dim": 128,
+        "summary_dim": 64,
         "pool_time": True,
         "pool_space": True,
+    }
+)
+
+DIFFUSION_PDE_MODEL_LSTM_ARCHITECTURE = MetaDictSetting(
+    meta_dict={
+        "lstm_units": [512, 512, 512],
+        "fc_units": [512, 512],
+        "fc_activation": "relu",
+        "summary_dim": 64,
+    }
+)
+
+DIFFUSION_PDE_MODEL_DOUBLE_LSTM_ARCHITECTURE = MetaDictSetting(
+    meta_dict={
+        "LSTM": DIFFUSION_PDE_MODEL_LSTM_ARCHITECTURE,
+        "FC": DIFFUSION_PDE_MODEL_FC_ARCHITECTURE,
     }
 )
 
@@ -110,16 +128,16 @@ DIFFUSION_PDE_MODEL_CONVLSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
         "num_filters": [32, 64, 128],
         "units": [1024, 1024],
-        "summary_dim": 128,
+        "summary_dim": 64,
         "fc_activation": "relu",
-        "pool_time": True,
-        "pool_space": True,
+        "pool_time": False,
+        "pool_space": False,
         "batch_norm": True,
     }
 )
 
 DIFFUSION_PDE_MODEL_INN_ARCHITECTURE = {
-    "n_coupling_layers": 8,
+    "n_coupling_layers": 10,
 }
 
 DIFFUSION_PDE_MODEL_ARCHITECTURES = {
@@ -127,6 +145,8 @@ DIFFUSION_PDE_MODEL_ARCHITECTURES = {
     "CNN": DIFFUSION_PDE_MODEL_CNN_ARCHITECTURE,
     "INN": DIFFUSION_PDE_MODEL_INN_ARCHITECTURE,
     "ConvLSTM": DIFFUSION_PDE_MODEL_CONVLSTM_ARCHITECTURE,
+    "LSTM": DIFFUSION_PDE_MODEL_LSTM_ARCHITECTURE,
+    "DoubleLSTM": DIFFUSION_PDE_MODEL_DOUBLE_LSTM_ARCHITECTURE,
 }
 
 # ---------------------------------------------------------------------------- #
@@ -136,26 +156,27 @@ DIFFUSION_PDE_MODEL_ARCHITECTURES = {
 
 DIFFUSION_PDE_MODEL_TRAINING_SETTINGS = {
     "lr": PiecewiseConstantDecay(
-        [1000, 2000, 3000, 4000],
-        [0.001, 0.0001, 0.00001, 0.000001, 0.0000001],
+        [10000, 20000, 30000],
+        [0.001, 0.0001, 0.00001, 0.000001],
     ),
-    "num_epochs": 50,
-    "it_per_epoch": 100,
+    "num_epochs": 40,
+    "it_per_epoch": 1000,
     "batch_size": 32,
+    "no_bayesflow": False,
 }
 
 DIFFUSION_PDE_MODEL_PROCESSING_SETTINGS = {
     "norm_prior": True,
-    "norm_sim_data": "log_norm",
+    "norm_sim_data": "mean_std",
     "remove_nan": True,
     "float32_cast": True,
 }
 
-DIFFUSION_PDE_MODEL_HDF5_SETTINGS = {"total_n_sim": 1024000, "chunk_size": 10240}
+DIFFUSION_PDE_MODEL_HDF5_SETTINGS = {"total_n_sim": 32200000, "chunk_size": 1000}
 
 DIFFUSION_PDE_MODEL_EVALUATION_SETTINGS = {
     "batch_size": 300,
-    "n_samples": 100,
+    "n_samples": 1000,
     "plot_prior": True,
     "plot_sim_data": True,
     "plot_loss": True,

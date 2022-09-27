@@ -22,7 +22,19 @@ class DiffusionPDEModel(SimulationModel):
         default_param_values: dict,
         plot_settings: dict,
     ) -> None:
-        self.num_features = 2
+        if (
+            not simulation_settings["use_f_terms"]
+            and simulation_settings["random_initial"]
+        ):
+            for i in range(1, simulation_settings["nr"]):
+                hidden_params["sample_u{}".format(i)] = hidden_params["sample_u0"]
+                sample_boundaries["u{}".format(i)] = sample_boundaries["u0"]
+                default_param_values["u{}".format(i)] = default_param_values["u0"]
+
+                hidden_params["sample_v{}".format(i)] = hidden_params["sample_v0"]
+                sample_boundaries["v{}".format(i)] = sample_boundaries["v0"]
+                default_param_values["v{}".format(i)] = default_param_values["v0"]
+
         super().__init__(
             hidden_params,
             simulation_settings,
@@ -37,15 +49,44 @@ class DiffusionPDEModel(SimulationModel):
             self.generative_model,
         ) = self.get_bayesflow_generator()
 
+        if self.simulation_settings["reduce_2D"]:
+            self.is_pde = False
+
         self.print_internal_settings()
 
     def get_sim_data_shape(self) -> tuple:
-        sim_data_dim = (self.max_time_iter, self.nr, self.num_features)
+        if self.simulation_settings["reduce_2D"]:
+            sim_data_dim = (self.max_time_iter, self.nr * 2)
+        else:
+            sim_data_dim = (self.max_time_iter, self.nr, 2)
         return sim_data_dim
+
+    def reject_sampler(self, sample: npt.NDArray[Any]) -> bool:
+        solution = self.solver(sample)
+        if np.amax(solution) > 10e10:
+            return True
+        else:
+            return False
 
     def solver(self, params: npt.NDArray[Any]) -> npt.NDArray[Any]:
         param_kwargs = self.sample_to_kwargs(params)
-        X0 = np.ones(2 * self.nr)
+        if self.simulation_settings["use_f_terms"]:
+            U0 = param_kwargs["gamma_u"] * np.sin(param_kwargs["alpha_u"] * self.x)
+            V0 = param_kwargs["gamma_v"] * np.cos(param_kwargs["alpha_v"] * self.x)
+        else:
+            if self.simulation_settings["random_initial"]:
+                U0_lst = []
+                V0_lst = []
+                for i in range(self.nr):
+                    U0_lst.append(param_kwargs["u{}".format(i)])
+                    V0_lst.append(param_kwargs["v{}".format(i)])
+                    U0 = np.array(U0_lst)
+                    V0 = np.array(V0_lst)
+            else:
+                U0 = param_kwargs["gamma_u"] * np.sin(param_kwargs["alpha_u"] * self.x)
+                V0 = param_kwargs["gamma_v"] * np.cos(param_kwargs["alpha_v"] * self.x)
+
+        X0 = np.concatenate((U0, V0))
 
         def diffusion_pde(X, t):
             diff_matrix = (
@@ -133,12 +174,12 @@ class DiffusionPDEModel(SimulationModel):
             hmin=self.simulation_settings["hmin"],
         )
 
-        u = np.expand_dims(solution[:, : self.nr], axis=2)
-        v = np.expand_dims(solution[:, self.nr :], axis=2)
-
-        sim_data = np.concatenate((u, v), axis=2)
-
-        return sim_data
+        if self.simulation_settings["reduce_2D"]:
+            return solution
+        else:
+            u = np.expand_dims(solution[:, : self.nr], axis=2)
+            v = np.expand_dims(solution[:, self.nr :], axis=2)
+            return np.concatenate((u, v), axis=2)
 
     def plot_sim_data(
         self, parent_folder: str = None
@@ -166,21 +207,35 @@ class DiffusionPDEModel(SimulationModel):
             ax = fig.add_subplot(
                 int("{}{}{}".format(n_row, n_col, i + 1)), projection="3d"
             )
-            nr = np.linspace(1, self.nr, self.nr)
-            X, Y = np.meshgrid(nr, self.t)
+            X, Y = np.meshgrid(self.x, self.t)
             mappable = plt.cm.ScalarMappable()
-            mappable.set_array(sim_data[i, :, :, 0])
-            ax.plot_surface(
-                X,
-                Y,
-                sim_data[i, :, :, 0],
-                cmap=mappable.cmap,
-                norm=mappable.norm,
-                linewidth=0,
-                antialiased=False,
-                alpha=0.8,
-                label="asynchronous",
-            )
+            if self.simulation_settings["reduce_2D"]:
+                mappable.set_array(sim_data[i, :, : self.nr])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, : self.nr],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
+            else:
+                mappable.set_array(sim_data[i, :, :, 0])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, :, 0],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
+
             fig.colorbar(mappable)
 
             ax.set_xlabel("Position x [m]")
@@ -213,18 +268,32 @@ class DiffusionPDEModel(SimulationModel):
             )
             X, Y = np.meshgrid(self.x, self.t)
             mappable = plt.cm.ScalarMappable()
-            mappable.set_array(sim_data[i, :, :, 1])
-            ax.plot_surface(
-                X,
-                Y,
-                sim_data[i, :, :, 1],
-                cmap=mappable.cmap,
-                norm=mappable.norm,
-                linewidth=0,
-                antialiased=False,
-                alpha=0.8,
-                label="asynchronous",
-            )
+            if self.simulation_settings["reduce_2D"]:
+                mappable.set_array(sim_data[i, :, self.nr :])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, self.nr :],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
+            else:
+                mappable.set_array(sim_data[i, :, :, 1])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, :, 1],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
             fig.colorbar(mappable)
 
             ax.set_xlabel("Position x [m]")
@@ -293,28 +362,54 @@ class DiffusionPDEModel(SimulationModel):
             fig = plt.figure(figsize=self.plot_settings["figsize"])
             for i in range(self.plot_settings["num_plots"]):
                 ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
-                ax.plot(
-                    self.t,
-                    np.median(resim[i, :, :, k, 0], axis=0),
-                    label="Median u({},t)".format(k),
-                )
-                ax.plot(
-                    self.t,
-                    ground_truths[i, :, k, 0],
-                    marker="o",
-                    label="Ground truth u({},t)".format(k),
-                    color="k",
-                    linestyle="--",
-                    alpha=0.8,
-                )
+                if self.simulation_settings["reduce_2D"]:
+                    ax.plot(
+                        self.t,
+                        np.median(resim[i, :, :, k], axis=0),
+                        label="Median u({},t)".format(k),
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k],
+                        marker="o",
+                        label="Ground truth u({},t)".format(k),
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
 
-                qt_50 = np.quantile(resim[i, :, :, k, 0], q=[0.25, 0.75], axis=0)
-                qt_90 = np.quantile(resim[i, :, :, k, 0], q=[0.05, 0.95], axis=0)
-                qt_95 = np.quantile(resim[i, :, :, k, 0], q=[0.025, 0.975], axis=0)
+                    qt_50 = np.quantile(resim[i, :, :, k], q=[0.25, 0.75], axis=0)
+                    qt_90 = np.quantile(resim[i, :, :, k], q=[0.05, 0.95], axis=0)
+                    qt_95 = np.quantile(resim[i, :, :, k], q=[0.025, 0.975], axis=0)
+                else:
+                    ax.plot(
+                        self.t,
+                        np.median(resim[i, :, :, k, 0], axis=0),
+                        label="Median u({},t)".format(k),
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k, 0],
+                        marker="o",
+                        label="Ground truth u({},t)".format(k),
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
 
-                ax.fill_between(self.t, qt_50[0], qt_50[1], alpha=0.3, label="50% CI")
-                ax.fill_between(self.t, qt_90[0], qt_90[1], alpha=0.2, label="90% CI")
-                ax.fill_between(self.t, qt_95[0], qt_95[1], alpha=0.1, label="95% CI")
+                    qt_50 = np.quantile(resim[i, :, :, k, 0], q=[0.25, 0.75], axis=0)
+                    qt_90 = np.quantile(resim[i, :, :, k, 0], q=[0.05, 0.95], axis=0)
+                    qt_95 = np.quantile(resim[i, :, :, k, 0], q=[0.025, 0.975], axis=0)
+
+                ax.fill_between(
+                    self.t, qt_50[0], qt_50[1], color="blue", alpha=0.3, label="50% CI"
+                )
+                ax.fill_between(
+                    self.t, qt_90[0], qt_90[1], color="blue", alpha=0.2, label="90% CI"
+                )
+                ax.fill_between(
+                    self.t, qt_95[0], qt_95[1], color="blue", alpha=0.1, label="95% CI"
+                )
 
                 ax.set_xlabel("Time [s]")
                 ax.set_ylabel("Diffusion u({},t)".format(k))
@@ -345,49 +440,83 @@ class DiffusionPDEModel(SimulationModel):
                     time.sleep(self.plot_settings["show_time"])
             plt.close()
 
-        for k in range(self.nr):
+        for k in range(self.nr, 2 * self.nr):
             fig = plt.figure(figsize=self.plot_settings["figsize"])
             for i in range(self.plot_settings["num_plots"]):
                 ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
-                ax.plot(
-                    self.t,
-                    np.median(resim[i, :, :, k, 1], axis=0),
-                    label="Median v({},t)".format(k),
-                )
-                ax.plot(
-                    self.t,
-                    ground_truths[i, :, k, 1],
-                    marker="o",
-                    label="Ground truth v({}, t)".format(k),
-                    color="k",
-                    linestyle="--",
-                    alpha=0.8,
-                )
+                if self.simulation_settings["reduce_2D"]:
+                    ax.plot(
+                        self.t,
+                        np.median(resim[i, :, :, k], axis=0),
+                        label="Median v({},t)".format(k),
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k],
+                        marker="o",
+                        label="Ground truth v({}, t)".format(k),
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
 
-                qt_50 = np.quantile(resim[i, :, :, k, 0], q=[0.25, 0.75], axis=0)
-                qt_90 = np.quantile(resim[i, :, :, k, 0], q=[0.05, 0.95], axis=0)
-                qt_95 = np.quantile(resim[i, :, :, k, 0], q=[0.025, 0.975], axis=0)
+                    qt_50 = np.quantile(resim[i, :, :, k], q=[0.25, 0.75], axis=0)
+                    qt_90 = np.quantile(resim[i, :, :, k], q=[0.05, 0.95], axis=0)
+                    qt_95 = np.quantile(resim[i, :, :, k], q=[0.025, 0.975], axis=0)
+                else:
+                    ax.plot(
+                        self.t,
+                        np.median(resim[i, :, :, k - self.nr, 1], axis=0),
+                        label="Median v({},t)".format(k - self.nr),
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k - self.nr, 1],
+                        marker="o",
+                        label="Ground truth v({}, t)".format(k - self.nr),
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
 
-                ax.fill_between(self.t, qt_50[0], qt_50[1], alpha=0.3, label="50% CI")
-                ax.fill_between(self.t, qt_90[0], qt_90[1], alpha=0.2, label="90% CI")
-                ax.fill_between(self.t, qt_95[0], qt_95[1], alpha=0.1, label="95% CI")
+                    qt_50 = np.quantile(
+                        resim[i, :, :, k - self.nr, 1], q=[0.25, 0.75], axis=0
+                    )
+                    qt_90 = np.quantile(
+                        resim[i, :, :, k - self.nr, 1], q=[0.05, 0.95], axis=0
+                    )
+                    qt_95 = np.quantile(
+                        resim[i, :, :, k - self.nr, 1], q=[0.025, 0.975], axis=0
+                    )
+
+                ax.fill_between(
+                    self.t, qt_50[0], qt_50[1], color="blue", alpha=0.3, label="50% CI"
+                )
+                ax.fill_between(
+                    self.t, qt_90[0], qt_90[1], color="blue", alpha=0.2, label="90% CI"
+                )
+                ax.fill_between(
+                    self.t, qt_95[0], qt_95[1], color="blue", alpha=0.1, label="95% CI"
+                )
 
                 ax.set_xlabel("Time [s]")
-                ax.set_ylabel("Diffusion v({},t)".format(k))
+                ax.set_ylabel("Diffusion v({},t)".format(k - self.nr))
                 ax.grid(True)
                 handles, labels = ax.get_legend_handles_labels()
 
             fig.legend(handles, labels)
 
             if self.plot_settings["show_title"]:
-                fig.suptitle("Diffusion PDE model resimulation v({}, t)".format(k))
+                fig.suptitle(
+                    "Diffusion PDE model resimulation v({}, t)".format(k - self.nr)
+                )
 
             plt.tight_layout()
 
             if parent_folder is not None:
                 pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
                 save_path = os.path.join(
-                    parent_folder, "resimulation_v_nr{}.png".format(k)
+                    parent_folder, "resimulation_v_nr{}.png".format(k - self.nr)
                 )
                 fig.savefig(
                     save_path, transparent=True, bbox_inches="tight", pad_inches=0

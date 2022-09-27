@@ -1,8 +1,10 @@
 from ML_for_Battery_Design.src.helpers.summary import (
     CNN_Network,
     ConvLSTM_Network,
+    DoubleLSTM_Network,
     FC_Network,
     LSTM_Network,
+    SPM_Network,
 )
 from ML_for_Battery_Design.src.settings.diffusion_pde_settings import (
     DIFFUSION_PDE_MODEL_ARCHITECTURES,
@@ -28,6 +30,8 @@ summary_collection = {
     "LSTM": LSTM_Network,
     "CNN": CNN_Network,
     "ConvLSTM": ConvLSTM_Network,
+    "SPM": SPM_Network,
+    "DoubleLSTM": DoubleLSTM_Network,
 }
 
 sim_model_collection = {

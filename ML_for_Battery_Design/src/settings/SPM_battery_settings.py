@@ -11,25 +11,27 @@ HIDDEN_PARAMS = {
     "sample_eps": False,
     "sample_r": True,
     "sample_Ds": True,
-    "sample_k": False,
+    "sample_k": True,
 }
 
 SIMULATION_SETTINGS = {
-    "dt0": 100.0,
-    "max_time_iter": 375,
+    "dt0": 10,  # 375.0,
+    "max_time_iter": 400,
     "nr": 10,
     "stop_condition": 1,
     "V_cut": 3,
     "use_reject_sampling": False,
+    "reduce_2D": True,
+    "subsampling": 20,  # 200
 }
 
 SAMPLE_BOUNDARIES = {
-    "C_rate": (0.1, 2),
+    "C_rate": (1, 2),
     "L": (20e-6, 200e-6),
     "eps": (0.4, 0.7),
     "r": (1e-6, 10e-6),
-    "Ds": (5e-14, 1e-13),
-    "k": (10e-12, 10e-10),
+    "Ds": (1e-15, 1e-13),
+    "k": (1e-12, 1e-10),
 }
 
 DEFAULT_VALUES = {
@@ -46,7 +48,7 @@ PLOT_SETTINGS = {
     "figsize": (15, 10),
     "font_size": 12,
     "show_title": True,
-    "show_plot": True,
+    "show_plot": False,
     "show_time": None,
     "show_params": True,
     "show_eigen": True,
@@ -66,16 +68,16 @@ SPM_BATTERY_MODEL_SIMULATION_SETTINGS = {
 # ---------------------------------------------------------------------------- #
 
 SPM_BATTERY_MODEL_FC_ARCHITECTURE = MetaDictSetting(
-    meta_dict={"units": [32, 32, 32], "activation": "relu", "summary_dim": 32}
+    meta_dict={"units": [128, 128, 128], "activation": "relu", "summary_dim": 32}
 )
 
 SPM_BATTERY_MODEL_CNN_ARCHITECTURE = MetaDictSetting(
     meta_dict={
         "num_filters": [32, 64, 128],
         "cnn_activation": "elu",
-        "units": [1024, 1024],
+        "units": [128, 128],
         "fc_activation": "relu",
-        "summary_dim": 128,
+        "summary_dim": 32,
         "pool_time": True,
         "pool_space": True,
     }
@@ -83,17 +85,17 @@ SPM_BATTERY_MODEL_CNN_ARCHITECTURE = MetaDictSetting(
 
 SPM_BATTERY_MODEL_LSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
-        "lstm_units": [32, 32, 32],
-        "fc_units": [32, 32],
+        "lstm_units": [512, 512, 512],
+        "fc_units": [512, 512],
         "fc_activation": "relu",
-        "summary_dim": 32,
+        "summary_dim": 64,
     }
 )
 
 SPM_BATTERY_MODEL_CONVLSTM_ARCHITECTURE = MetaDictSetting(
     meta_dict={
-        "num_filters": [32, 64, 128, 256, 512],
-        "units": [1024, 1024],
+        "num_filters": [32, 64, 128],
+        "units": None,
         "summary_dim": 128,
         "fc_activation": "relu",
         "pool_time": True,
@@ -106,12 +108,21 @@ SPM_BATTERY_MODEL_INN_ARCHITECTURE = {
     "n_coupling_layers": 10,
 }
 
+SPM_BATTERY_MODEL_CUSTOM_ARCHITECTURE = MetaDictSetting(
+    meta_dict={
+        "ConvLSTM": SPM_BATTERY_MODEL_CONVLSTM_ARCHITECTURE,
+        "LSTM": SPM_BATTERY_MODEL_LSTM_ARCHITECTURE,
+        "FC": SPM_BATTERY_MODEL_FC_ARCHITECTURE,
+    }
+)
+
 SPM_BATTERY_MODEL_ARCHITECTURES = {
     "FC": SPM_BATTERY_MODEL_FC_ARCHITECTURE,
     "CNN": SPM_BATTERY_MODEL_CNN_ARCHITECTURE,
     "INN": SPM_BATTERY_MODEL_INN_ARCHITECTURE,
     "LSTM": SPM_BATTERY_MODEL_LSTM_ARCHITECTURE,
     "ConvLSTM": SPM_BATTERY_MODEL_CONVLSTM_ARCHITECTURE,
+    "SPM": SPM_BATTERY_MODEL_CUSTOM_ARCHITECTURE,
 }
 
 
@@ -121,22 +132,23 @@ SPM_BATTERY_MODEL_ARCHITECTURES = {
 
 SPM_BATTERY_MODEL_TRAINING_SETTINGS = {
     "lr": PiecewiseConstantDecay(
-        [1000, 1500],
-        [0.001, 0.0001, 0.00001],
+        [10000, 20000, 30000],
+        [0.001, 0.0001, 0.00001, 0.000001],
     ),
-    "num_epochs": 20,
-    "it_per_epoch": 100,
+    "num_epochs": 40,
+    "it_per_epoch": 1000,
     "batch_size": 32,
+    "no_bayesflow": False,
 }
 
 SPM_BATTERY_MODEL_PROCESSING_SETTINGS = {
     "norm_prior": True,
-    "norm_sim_data": "log_norm",
+    "norm_sim_data": "mean_std",
     "remove_nan": True,
     "float32_cast": True,
 }
 
-SPM_BATTERY_MODEL_HDF5_SETTINGS = {"total_n_sim": 1024000, "chunk_size": 10240}
+SPM_BATTERY_MODEL_HDF5_SETTINGS = {"total_n_sim": 32000, "chunk_size": 10}
 
 SPM_BATTERY_MODEL_EVALUATION_SETTINGS = {
     "batch_size": 300,

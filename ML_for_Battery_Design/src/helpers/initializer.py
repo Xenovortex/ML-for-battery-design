@@ -13,6 +13,7 @@ from bayesflow.networks import InvertibleNetwork
 from bayesflow.trainers import Trainer
 from tqdm.autonotebook import tqdm
 
+from ML_for_Battery_Design.src.helpers.amortizer import SummaryNetArmortizer
 from ML_for_Battery_Design.src.helpers.constants import (
     sim_model_collection,
     summary_collection,
@@ -98,13 +99,11 @@ class Initializer:
             self.file_manager = FileManager(self.mode, **kwargs)
             self.sim_model = self.get_sim_model()
             self.trainer = self.get_trainer()
-            self.evaluater = self.get_evaluater(self.trainer)
         elif bool(kwargs["train_offline"]):
             self.mode = "train_offline"
             self.file_manager = FileManager(self.mode, **kwargs)
             self.sim_model = self.get_sim_model()
             self.trainer = self.get_trainer()
-            self.evaluater = self.get_evaluater(self.trainer)
         elif bool(kwargs["generate_data"]):
             self.mode = "generate_data"
             self.file_manager = FileManager(self.mode, **kwargs)
@@ -113,7 +112,6 @@ class Initializer:
             self.mode = "analyze_sim"
             self.file_manager = FileManager(self.mode, **kwargs)
             self.sim_model = self.get_sim_model()
-            self.evaluater = self.get_evaluater()
         elif bool(kwargs["evaluate"]):
             self.mode = "evaluate"
             self.file_manager = FileManager(self.mode, **kwargs)
@@ -126,7 +124,6 @@ class Initializer:
             self.update_filemanager()
             self.sim_model = self.get_sim_model()
             self.trainer = self.get_trainer()
-            self.evaluater = self.get_evaluater(self.trainer)
 
     def update_filemanager(self) -> None:
         """Update filemanager attributes"""
@@ -210,12 +207,22 @@ class Initializer:
             amortizer (Type[AmortizedPosterior]): BayesFlow amortizer
         """
         summary_net = self.get_summary_net()
-        inference_net = self.get_inference_net()
-        amortizer = AmortizedPosterior(
-            inference_net,
-            summary_net,
-            name="{}_{}_amortizer".format(self.sim_model_name, self.summary_net_name),
-        )
+        if self.inference["training"]["no_bayesflow"]:
+            amortizer = SummaryNetArmortizer(
+                summary_net,
+                name="{}_{}_direct_amortizer".format(
+                    self.sim_model_name, self.summary_net_name
+                ),
+            )
+        else:
+            inference_net = self.get_inference_net()
+            amortizer = AmortizedPosterior(
+                inference_net,
+                summary_net,
+                name="{}_{}_bayesflow_amortizer".format(
+                    self.sim_model_name, self.summary_net_name
+                ),
+            )
         return amortizer
 
     def get_configurator(self) -> Type[Processing]:
@@ -377,18 +384,18 @@ class Initializer:
             hf.attrs["is_pde"] = self.sim_model.is_pde
             hf.attrs["sim_data_shape"] = self.sim_model.get_sim_data_shape()
 
-            data_dict = self.sim_model.generative_model(batch_size=chunk_size)
+            start_data_dict = self.sim_model.generative_model(batch_size=chunk_size)
 
             hf.create_dataset(
                 "true_params",
-                data=data_dict["prior_draws"],
+                data=start_data_dict["prior_draws"],
                 compression="gzip",
                 chunks=True,
                 maxshape=(None, self.sim_model.num_hidden_params),
             )
             hf.create_dataset(
                 "sim_data",
-                data=data_dict["sim_data"],
+                data=start_data_dict["sim_data"],
                 compression="gzip",
                 chunks=True,
                 maxshape=tuple([None] + list(self.sim_model.get_sim_data_shape())),

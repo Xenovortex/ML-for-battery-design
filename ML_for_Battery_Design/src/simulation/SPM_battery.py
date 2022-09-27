@@ -11,6 +11,9 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from SPM1.Electrode_V0 import Electrode
 
+from ML_for_Battery_Design.src.settings.SPM_battery_settings import (
+    SPM_BATTERY_MODEL_SIMULATION_SETTINGS,
+)
 from ML_for_Battery_Design.src.simulation.simulation_model import SimulationModel
 
 
@@ -38,11 +41,16 @@ class SPMBatteryModel(SimulationModel):
             self.generative_model,
         ) = self.get_bayesflow_generator()
 
+        if self.simulation_settings["reduce_2D"]:
+            self.is_pde = False
+
         self.print_internal_settings()
 
     def get_sim_data_shape(self) -> tuple:
-        sim_data_dim = (self.max_time_iter, self.nr, self.num_features)
-        # sim_data_dim = (self.max_time_iter, self.num_features)
+        if self.simulation_settings["reduce_2D"]:
+            sim_data_dim = (self.max_time_iter, self.nr + 1)
+        else:
+            sim_data_dim = (self.max_time_iter, self.nr + 1, 1)
         return sim_data_dim
 
     def solver(self, params: npt.NDArray[Any]) -> npt.NDArray[Any]:
@@ -95,7 +103,9 @@ class SPMBatteryModel(SimulationModel):
 
         nt = 0
         while True:
-            dt = self.dt0  # constant time steps for now!
+            dt = (
+                self.dt0 / self.simulation_settings["subsampling"]
+            )  # constant time steps for now!
 
             # solve cs via solid duffusion eq.:
             if nt != 0:
@@ -171,7 +181,9 @@ class SPMBatteryModel(SimulationModel):
                     )
 
             # convergence/stop condition check:
-            if stop_condition == 1 and nt == self.max_time_iter - 1:
+            if stop_condition == 1 and nt == (
+                self.max_time_iter * self.simulation_settings["subsampling"] - 1
+            ):
                 if printing:
                     print("Maximum time step reached!")
                 break
@@ -209,7 +221,28 @@ class SPMBatteryModel(SimulationModel):
                     )
                 writer.close()
 
-        sim_data = np.expand_dims(np.array(output["cat"]["cs"]), axis=2)
+        if self.simulation_settings["reduce_2D"]:
+            cs = np.array(
+                output["cat"]["cs"][:: self.simulation_settings["subsampling"]]
+            )
+            v = np.expand_dims(
+                np.array(output["V"][:: self.simulation_settings["subsampling"]]),
+                axis=1,
+            )
+            sim_data = np.concatenate((cs, v), axis=1)
+        else:
+            cs = np.expand_dims(
+                np.array(
+                    output["cat"]["cs"][:: self.simulation_settings["subsampling"]]
+                ),
+                axis=2,
+            )
+            v = np.expand_dims(
+                np.array(output["V"][:: self.simulation_settings["subsampling"]]),
+                axis=(1, 2),
+            )
+            sim_data = np.concatenate((cs, v), axis=1)
+
         return sim_data
 
     def plot_sim_data(
@@ -239,18 +272,32 @@ class SPMBatteryModel(SimulationModel):
             )
             X, Y = np.meshgrid(self.x, self.t)
             mappable = plt.cm.ScalarMappable()
-            mappable.set_array(sim_data[i, :, :, 0])
-            ax.plot_surface(
-                X,
-                Y,
-                sim_data[i, :, :, 0],
-                cmap=mappable.cmap,
-                norm=mappable.norm,
-                linewidth=0,
-                antialiased=False,
-                alpha=0.8,
-                label="asynchronous",
-            )
+            if self.simulation_settings["reduce_2D"]:
+                mappable.set_array(sim_data[i, :, :-1])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, :-1],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
+            else:
+                mappable.set_array(sim_data[i, :, :-1, 0])
+                ax.plot_surface(
+                    X,
+                    Y,
+                    sim_data[i, :, :-1, 0],
+                    cmap=mappable.cmap,
+                    norm=mappable.norm,
+                    linewidth=0,
+                    antialiased=False,
+                    alpha=0.8,
+                    label="asynchronous",
+                )
             fig.colorbar(mappable)
 
             ax.set_xlabel("Position x [m]")
@@ -259,13 +306,44 @@ class SPMBatteryModel(SimulationModel):
             ax.grid(True)
 
         if self.plot_settings["show_title"]:
-            fig.suptitle("SPM Battery model simulation data examples")
+            fig.suptitle("SPM Battery model concentration simulation data examples")
 
         plt.tight_layout()
 
         if parent_folder is not None:
             pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
-            save_path = os.path.join(parent_folder, "sim_data.png")
+            save_path = os.path.join(parent_folder, "cs_sim_data.png")
+            fig.savefig(save_path, transparent=True, bbox_inches="tight", pad_inches=0)
+
+        if self.plot_settings["show_plot"]:
+            plt.show(block=True if self.plot_settings["show_time"] is None else False)
+            if self.plot_settings["show_time"] is not None:
+                time.sleep(self.plot_settings["show_time"])
+        plt.close()
+
+        fig = plt.figure(figsize=self.plot_settings["figsize"])
+
+        for i in range(self.plot_settings["num_plots"]):
+            ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
+            if self.simulation_settings["reduce_2D"]:
+                ax.plot(self.t, sim_data[i, :, -1], label="V(t)")
+            else:
+                ax.plot(self.t, sim_data[i, :, -1, 0], label="V(t)")
+            ax.set_xlabel("Time t [s]")
+            ax.set_ylabel("Cell Voltage V")
+            ax.grid(True)
+            handles, labels = ax.get_legend_handles_labels()
+
+        fig.legend(handles, labels)
+
+        if self.plot_settings["show_title"]:
+            fig.suptitle("SPM Battery model overpotential simulation data examples")
+
+        plt.tight_layout()
+
+        if parent_folder is not None:
+            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
+            save_path = os.path.join(parent_folder, "V_sim_data.png")
             fig.savefig(save_path, transparent=True, bbox_inches="tight", pad_inches=0)
 
         if self.plot_settings["show_plot"]:
@@ -316,28 +394,56 @@ class SPMBatteryModel(SimulationModel):
         n_row = int(np.ceil(self.plot_settings["num_plots"] / 6))
         n_col = int(np.ceil(self.plot_settings["num_plots"] / n_row))
 
-        for k in range(self.nr):
+        for k in range(self.nr - 1):
             fig = plt.figure(figsize=self.plot_settings["figsize"])
             for i in range(self.plot_settings["num_plots"]):
                 ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
-                ax.plot(self.t, np.median(resim[i, :, :, k, 0], axis=0), label="Median")
-                ax.plot(
-                    self.t,
-                    ground_truths[i, :, k, 0],
-                    marker="o",
-                    label="Ground truth",
-                    color="k",
-                    linestyle="--",
-                    alpha=0.8,
+                if self.simulation_settings["reduce_2D"]:
+                    ax.plot(
+                        self.t, np.median(resim[i, :, :, k], axis=0), label="Median cs"
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k],
+                        marker="o",
+                        label="Ground truth",
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
+
+                    qt_50 = np.quantile(resim[i, :, :, k], q=[0.25, 0.75], axis=0)
+                    qt_90 = np.quantile(resim[i, :, :, k], q=[0.05, 0.95], axis=0)
+                    qt_95 = np.quantile(resim[i, :, :, k], q=[0.025, 0.975], axis=0)
+                else:
+                    ax.plot(
+                        self.t,
+                        np.median(resim[i, :, :, k, 0], axis=0),
+                        label="Median cs",
+                    )
+                    ax.plot(
+                        self.t,
+                        ground_truths[i, :, k, 0],
+                        marker="o",
+                        label="Ground truth",
+                        color="k",
+                        linestyle="--",
+                        alpha=0.8,
+                    )
+
+                    qt_50 = np.quantile(resim[i, :, :, k, 0], q=[0.25, 0.75], axis=0)
+                    qt_90 = np.quantile(resim[i, :, :, k, 0], q=[0.05, 0.95], axis=0)
+                    qt_95 = np.quantile(resim[i, :, :, k, 0], q=[0.025, 0.975], axis=0)
+
+                ax.fill_between(
+                    self.t, qt_50[0], qt_50[1], color="blue", alpha=0.3, label="50% CI"
                 )
-
-                qt_50 = np.quantile(resim[i, :, :, k, 0], q=[0.25, 0.75], axis=0)
-                qt_90 = np.quantile(resim[i, :, :, k, 0], q=[0.05, 0.95], axis=0)
-                qt_95 = np.quantile(resim[i, :, :, k, 0], q=[0.025, 0.975], axis=0)
-
-                ax.fill_between(self.t, qt_50[0], qt_50[1], alpha=0.3, label="50% CI")
-                ax.fill_between(self.t, qt_90[0], qt_90[1], alpha=0.2, label="90% CI")
-                ax.fill_between(self.t, qt_95[0], qt_95[1], alpha=0.1, label="95% CI")
+                ax.fill_between(
+                    self.t, qt_90[0], qt_90[1], color="blue", alpha=0.2, label="90% CI"
+                )
+                ax.fill_between(
+                    self.t, qt_95[0], qt_95[1], color="blue", alpha=0.1, label="95% CI"
+                )
 
                 ax.set_xlabel("Time [s]")
                 ax.set_ylabel("Concentration [mol/m³]")
@@ -347,14 +453,16 @@ class SPMBatteryModel(SimulationModel):
             fig.legend(handles, labels)
 
             if self.plot_settings["show_title"]:
-                fig.suptitle("SPM Battery model resimulation nr={}".format(k))
+                fig.suptitle(
+                    "SPM Battery model concentration resimulation nr={}".format(k)
+                )
 
             plt.tight_layout()
 
             if parent_folder is not None:
                 pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
                 save_path = os.path.join(
-                    parent_folder, "resimulation_nr{}.png".format(k)
+                    parent_folder, "cs_resimulation_nr{}.png".format(k)
                 )
                 fig.savefig(
                     save_path, transparent=True, bbox_inches="tight", pad_inches=0
@@ -368,4 +476,86 @@ class SPMBatteryModel(SimulationModel):
                     time.sleep(self.plot_settings["show_time"])
             plt.close()
 
+        fig = plt.figure(figsize=self.plot_settings["figsize"])
+
+        for i in range(self.plot_settings["num_plots"]):
+            ax = fig.add_subplot(int("{}{}{}".format(n_row, n_col, i + 1)))
+            if self.simulation_settings["reduce_2D"]:
+                ax.plot(
+                    self.t, np.median(resim[i, :, :, -1], axis=0), label="Median V(t)"
+                )
+                ax.plot(
+                    self.t,
+                    ground_truths[i, :, -1],
+                    marker="o",
+                    label="Ground truth",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
+                )
+
+                qt_50 = np.quantile(resim[i, :, :, -1], q=[0.25, 0.75], axis=0)
+                qt_90 = np.quantile(resim[i, :, :, -1], q=[0.05, 0.95], axis=0)
+                qt_95 = np.quantile(resim[i, :, :, -1], q=[0.025, 0.975], axis=0)
+            else:
+                ax.plot(
+                    self.t,
+                    np.median(resim[i, :, :, -1, 0], axis=0),
+                    label="Median V(t)",
+                )
+                ax.plot(
+                    self.t,
+                    ground_truths[i, :, -1, 0],
+                    marker="o",
+                    label="Ground truth",
+                    color="k",
+                    linestyle="--",
+                    alpha=0.8,
+                )
+
+                qt_50 = np.quantile(resim[i, :, :, -1, 0], q=[0.25, 0.75], axis=0)
+                qt_90 = np.quantile(resim[i, :, :, -1, 0], q=[0.05, 0.95], axis=0)
+                qt_95 = np.quantile(resim[i, :, :, -1, 0], q=[0.025, 0.975], axis=0)
+
+            ax.fill_between(
+                self.t, qt_50[0], qt_50[1], color="blue", alpha=0.3, label="50% CI"
+            )
+            ax.fill_between(
+                self.t, qt_90[0], qt_90[1], color="blue", alpha=0.2, label="90% CI"
+            )
+            ax.fill_between(
+                self.t, qt_95[0], qt_95[1], color="blue", alpha=0.1, label="95% CI"
+            )
+
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Cell Voltage [V]")
+            ax.grid(True)
+            handles, labels = ax.get_legend_handles_labels()
+
+        fig.legend(handles, labels)
+
+        if self.plot_settings["show_title"]:
+            fig.suptitle("SPM Battery model Overpotential resimulation nr={}".format(k))
+
+        plt.tight_layout()
+
+        if parent_folder is not None:
+            pathlib.Path(parent_folder).mkdir(parents=True, exist_ok=True)
+            save_path = os.path.join(parent_folder, "V_resimulation_nr{}.png".format(k))
+            fig.savefig(save_path, transparent=True, bbox_inches="tight", pad_inches=0)
+
+        if self.plot_settings["show_plot"]:
+            plt.show(block=True if self.plot_settings["show_time"] is None else False)
+            if self.plot_settings["show_time"] is not None:
+                time.sleep(self.plot_settings["show_time"])
+        plt.close()
+
         return fig, ax, resim
+
+
+if __name__ == "__main__":
+    model = SPMBatteryModel(**SPM_BATTERY_MODEL_SIMULATION_SETTINGS)
+    params = model.uniform_prior()
+    sim_data = model.solver(params)
+    print(params)
+    print(sim_data)
